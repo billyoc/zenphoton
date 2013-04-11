@@ -213,7 +213,7 @@ class Renderer
         # fresh buffer.
 
         if msg.cookie > @bufferCookie
-            @raysCast = 0
+            @raysTraced = 0
             for i in [0..n] by 1
                 d[i] = 0
             @bufferCookie = msg.cookie
@@ -227,7 +227,7 @@ class Renderer
             s = new Uint32Array(msg.counts)
             for i in [0..n] by 1
                 d[i] += s[i]
-            @raysCast += msg.numRays
+            @raysTraced += msg.numRays
             @callback()
 
         @scheduleWork(worker)
@@ -238,7 +238,7 @@ class Renderer
             numRays = 1000
         else
             # Scale batches of work so they get longer after the image has settled
-            numRays = 0 | Math.min(199999, Math.max(1000, @raysCast / 2))
+            numRays = 0 | Math.min(199999, Math.max(1000, @raysTraced / 2))
 
         worker._latestCookie = @workCookie
         worker._numRays = numRays
@@ -287,12 +287,12 @@ class Renderer
         return (t.getTime() - @startTime.getTime()) * 1e-3
 
     raysPerSecond: ->
-        return @raysCast / @elapsedSeconds()
+        return @raysTraced / @elapsedSeconds()
 
     drawLight: (br) ->
         # Draw the current simulation results to our Canvas
 
-        br = Math.exp(1 + 10 * @exposure) / @raysCast
+        br = Math.exp(1 + 10 * @exposure) / @raysTraced
 
         n = @width * @height
         pix = @pixels
@@ -495,7 +495,7 @@ class ChomperUI
 
         @renderer.callback = () =>
             @redraw()
-            $('#raysCast').text(@renderer.raysCast)
+            $('#raysTraced').text(@renderer.raysTraced)
             $('#raySpeed').text(@renderer.raysPerSecond()|0)
 
         $('#histogramImage')
