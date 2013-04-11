@@ -1,5 +1,12 @@
 ###
-    Worker thread for the RayChomper experimental raytracer. 
+    Worker thread for Zen Photon Garden.
+
+    Workers are used for our CPU-intensive computing tasks:
+
+        - Rendering a scene to a ray histogram
+        - Combining multiple ray histograms
+        - Rendering a combined ray histogram to a bitmap
+
     Copyright (c) 2013 Micah Elizabeth Scott <micah@scanlime.org>
 
     Permission is hereby granted, free of charge, to any person
@@ -24,7 +31,8 @@
     OTHER DEALINGS IN THE SOFTWARE.
 ###
 
-@innerLoop = (c, i, e, b, y, g, u, v) ->
+
+@lineLoop = (c, i, e, b, y, g, u, v) ->
     # Unrolled inner loop for line drawing algorithm.
     #
     # Most of the raytracer is inlined below, to avoid the costs
@@ -63,8 +71,62 @@
         i += u
 
 
-@onmessage = (event) ->
-    msg = event.data
+@accumLoop = (s, d) ->
+    # Unrolled inner loop for summing histogram data
+
+    i = 0
+    e = s.length
+
+    loop
+        d[i] += s[i]
+        i++
+        d[i] += s[i]
+        i++
+        d[i] += s[i]
+        i++
+        d[i] += s[i]
+        i++
+
+        return if i >= e
+
+
+@renderLoop = (s, d, b) ->
+    # Unrolled inner loop for rendering an image
+
+    i = 0
+    j = 0
+    n = s.length
+
+    loop
+        v = c[j++] * b
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = 0xFF
+
+        v = c[j++] * b
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = 0xFF
+
+        v = c[j++] * b
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = 0xFF
+
+        v = c[j++] * b
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = v
+        pix[i++] = 0xFF
+
+        return if j >= n
+
+
+@job_trace = (msg) ->
+    # Raytracing loop! Traces a scene, passes back the histogram array afterward.
 
     width = msg.width
     height = msg.height
@@ -223,7 +285,7 @@
             counts[i] += xgap * (1 - yend + ypxl2)
             counts[i + hY] += xgap * (yend - ypxl2)
 
-            innerLoop(counts, hX * xpxl1, hX * xpxl2, br, intery, gradient, hX, hY)
+            lineLoop(counts, hX * xpxl1, hX * xpxl2, br, intery, gradient, hX, hY)
 
             ################################################################
             # What happens to the ray now?
@@ -251,9 +313,47 @@
                 # Absorbed
                 break
 
-    msg = {
+    @postMessage({
         'cookie': cookie,
         'numRays': msg.numRays,
         'counts': counts.buffer,
-    }
-    @postMessage(msg, [counts.buffer])
+    }, [counts.buffer])
+
+
+@job_clear = (msg) ->
+    # Empty out our accumulator buffer.
+    @accumulator = null
+    @raysTraced = 0
+
+
+@job_accumulate = (msg) ->
+    # Accumulate samples from another thread's raytracing.
+
+    s = new Uint32Array(msg.counts)
+    @raysTraced += msg.numRays
+
+    d = @accumulator
+    d = @accumulator = new Uint32Array(s.length) if not d
+
+    accumLoop(s, d)
+
+
+@job_render = (msg) ->
+    # Using the current accumulator state, render an RGBA image.
+
+    if @accumulator
+        pix = new Uint8ClampedArray @accumulator.length
+        br = Math.exp(1 + 10 * msg.exposure) / @raysTraced
+        renderLoop(@accumulator, pix, br)
+
+    @postMessage({
+        'raysTraced': @raysTraced,
+        'pixels': pix.buffer,
+    }, [pix.buffer])
+
+
+
+
+@onmessage = (event) =>
+    msg = event.data
+    this['job_' + msg.job](msg)
