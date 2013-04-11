@@ -1,5 +1,6 @@
 ###
-    This file is part of the RayChomper experimental raytracer. 
+    Zen Photon Garden.
+
     Copyright (c) 2013 Micah Elizabeth Scott <micah@scanlime.org>
 
     Permission is hereby granted, free of charge, to any person
@@ -244,6 +245,7 @@ class Renderer
         worker._numRays = numRays
 
         worker.postMessage({
+            'job': 'trace',
             'width': @width,
             'height': @height,
             'lightX': @lightX,
@@ -464,9 +466,9 @@ class Button
                 $('body').css cursor: 'auto'
 
 
-class ChomperUI
+class GardenUI
     constructor: (canvasId) ->
-        @renderer = new Renderer(canvasId)
+        @renderer = new Renderer('histogramImage')
         @undo = new UndoTracker(@renderer)
 
         # Load saved state, if any
@@ -596,6 +598,6 @@ class ChomperUI
 
 
 $(document).ready(() ->
-    ui = new ChomperUI 'histogramImage'
+    ui = new GardenUI
     ui.renderer.start()
 )
