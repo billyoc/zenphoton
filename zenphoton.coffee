@@ -496,16 +496,6 @@ class GardenUI
         @renderer = new Renderer('histogramImage')
         @undo = new UndoTracker(@renderer)
 
-        # Load saved state, if any
-        saved = document.location.hash.replace('#', '')
-        if saved
-            @renderer.setStateBlob(atob(saved))
-
-        # If the scene is empty, let our 'first run' help show through.
-        # This fades out when the first segment is drawn.
-        if @renderer.segments.length
-            $('#help').hide()
-
         # Set up our 'exposure' slider
         do (e = new VSlider $('#exposureSlider'), $('#workspace')) =>
             e.setValue(@renderer.exposure)
@@ -584,6 +574,17 @@ class GardenUI
         (new Button $('#linkButton')).click = () =>
             @updateLink()
             window.prompt("Copy this URL to share your garden.", document.location)
+
+        # Load saved state, if any
+        saved = document.location.hash.replace('#', '')
+        if saved
+            @renderer.setStateBlob(atob(saved))
+        @renderer.clear()
+
+        # If the scene is empty, let our 'first run' help show through.
+        # This fades out when the first segment is drawn.
+        if @renderer.segments.length
+            $('#help').hide()
 
     updateLink: ->
         document.location.hash = btoa(@renderer.getStateBlob())
