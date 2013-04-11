@@ -52,37 +52,110 @@ class Segment
         @t3 = @r2 + @transmissive
 
     calculateNormal: ->
+        l = @length()
+        @xn = (@y0 - @y1) / l
+        @yn = (@x1 - @x0) / l
+
+    length: ->
         dx = @x1 - @x0
         dy = @y1 - @y0
-        len = Math.sqrt(dx*dx + dy*dy)
-        @xn = -dy / len
-        @yn = dx / len
+        return Math.sqrt(dx*dx + dy*dy)
 
 
 class Renderer
     # Frontend for running raytracing work on several worker threads, and plotting
-    # the results on a Canvas.
+    # the results on a Canvas. Uses worker threads for everything.
+
+    kWorkerURI = 'rayworker.js'
+    kNumBatchWorkers = 2
+    kInteractiveRays = 1000
+    kMinBatchRays = 5000
+    kMaxBatchRays = 200000
+    kBatchSizeFactor = 0.1
+
+    callback: () ->
 
     constructor: (canvasId) ->
         @canvas = document.getElementById(canvasId)
         @canvas.addEventListener('resize', (e) => @resize())
 
-        # Hardcoded threadpool size
-        @workerURI = 'rayworker.js'
+        # We create one 'interactive' worker (where we do accumulation and merges).
+        # All other workers are 'batch' workers, which perform bulk background rendering.
 
-        # Placeholders for real workers, created in @start()
-        @workers = ({'_index': i} for i in [0..1])
+        @interactive = @newWorker()
+        @batch = (@newWorker() for i in [1 .. kNumBatchWorkers] by 1)
 
         # Cookies for keeping track of in-flight changes while rendering
-        @workCookie = 1
-        @bufferCookie = 0
+        @latestCookie = 1
 
-        @callback = () -> null
         @segments = []
         @exposure = 0.5
-
         @running = false
+        @showSegments = false
+
         @resize()
+
+    trimSegments: ->
+        # Remove any very small segments from the end of our list
+
+        while @segments.length
+            s = @segments.pop()
+            if s.length() > 0.1
+                @segments.push(s)
+                return
+        return
+
+    newWorker: ->
+        w = new Worker(kWorkerURI)
+        w._numPending = 0
+        w._cookie = 0
+        w.addEventListener 'message', (event) =>
+            w = event.target
+            msg = event.data
+
+            # The worker just finished something!
+            w._numPending--
+            w._cookie = msg.cookie
+
+            if msg.job == 'render' or msg.job == 'firstTrace'
+                # An image is done rendering. Store it, and notify the UI.
+
+                @raysTraced = msg.raysTraced
+                @pixelImage.data.set new Uint8ClampedArray msg.pixels
+                @redraw()
+                @callback()
+
+            else if msg.job == 'trace'
+
+                # Another thread finished tracing. Send the results to the interactive thread's accumulator,
+                # and ask for an async render so we can see the results. Transfer ownership of the temporary
+                # array, so we can send it from rendering thread to interactive thread without copying it.
+
+                @interactive.postMessage($.extend(msg, {'job': 'accumulate'}), [msg.counts])
+                @asyncRender()
+
+            # Can we begin a firstTrace now?
+            if @interactive._numPending == 0 and @interactive._cookie < @latestCookie
+                @firstTrace()
+
+            # Any async rendering to do?
+            if @interactive._numPending == 0 and @needAsyncRender
+                @asyncRender()
+
+            # Can we start any new batch jobs? We only run new batch jobs if the interactive worker is idle.
+            # This is lower priority than the above tasks; if we start an async render, for example, no batch jobs
+            # will start until that completes.
+
+            if @interactive._numPending == 0
+                @startBatchJobs()
+
+        return w
+
+    stop: ->
+        @running = false
+
+    start: ->
+        @running = true
 
     resize: ->
         # Set up our canvas
@@ -94,11 +167,6 @@ class Renderer
 
         # Create an ImageData that we'll use to transfer pixels back to the canvas
         @pixelImage = @ctx.getImageData(0, 0, @width, @height)
-        @pixels = new Uint8ClampedArray @pixelImage.data.length
-
-        # Reinitialize the histogram
-        @counts = new Uint32Array(@width * @height)
-        @clear()
 
         # Light source
         @lightX = @width / 2
@@ -111,6 +179,95 @@ class Renderer
             new Segment(@width-1, @height-1, @width-1, 0, 0,0,0),
             new Segment(@width-1, @height-1, 0, @height-1, 0,0,0),
         ]
+
+    sceneMessage: (args) ->
+        return $.extend args,
+            width: @width
+            height: @height
+            lightX: @lightX
+            lightY: @lightY
+            exposure: @exposure
+            segments: @walls.concat(@segments)
+            cookie: @latestCookie
+
+    startBatchJobs: ->
+        # Start longer-running batch rendering jobs on worker threads that are idle.
+
+        # Scale batches of work so they get longer after the image has settled
+        numRays = 0 | Math.min(kMaxBatchRays, Math.max(kMinBatchRays, @raysTraced * kBatchSizeFactor))
+
+        for w in @batch
+            continue if w._numPending
+            w._numPending++
+            w.postMessage @sceneMessage
+                job: 'trace'
+                numRays: numRays
+
+    clear: ->
+        # Clear the histogram, and start rendering an updated version of our scene
+        # in a small interactive batch. This will get our 'interactive' worker onto
+        # the latest cookie and reset its histogram. This can take some time, so if
+        # the worker is already busy we'll defer this until it becomes idle. This is
+        # important to prevent interactive udpates from piling up.
+
+        @latestCookie++
+        @startTime = new Date
+
+        # Start working immediately?
+        if @interactive._numPending == 0
+            @firstTrace()
+
+    firstTrace: ->
+        # Begin the first trace on a new scene. This should be performed when
+        # the interactive worker's cookie is out of date.
+
+        @interactive._numPending++
+        @interactive.postMessage @sceneMessage
+            job: 'firstTrace'
+            numRays: kInteractiveRays
+
+    asyncRender: ->
+        # Request an asynchronous rendering update, either immediately or once
+        # the interactive thread becomes idle.
+
+        if @interactive._numPending == 0
+            @interactive._numPending++
+            @interactive.postMessage @sceneMessage
+                job: 'render'
+            @needAsyncRender = false
+        else
+            @needAsyncRender = true
+
+    setExposure: (e) ->
+        @exposure = e
+        @asyncRender()
+
+    toDataURL: (mime) ->
+        # Return rendered image data
+
+        @ctx.putImageData(@pixelImage, 0, 0)
+        return @canvas.toDataURL(mime)
+
+    redraw: ->
+        # Image data, as computed by our interactive worker
+        @ctx.putImageData(@pixelImage, 0, 0)
+
+        # Draw lines over each segment in our scene
+        if @showSegments
+            @ctx.strokeStyle = '#ff8'
+            @ctx.lineWidth = 3
+            for s in @segments
+                @ctx.beginPath()
+                @ctx.moveTo(s.x0, s.y0)
+                @ctx.lineTo(s.x1, s.y1)
+                @ctx.stroke()
+
+    elapsedSeconds: ->
+        t = new Date()
+        return (t.getTime() - @startTime.getTime()) * 1e-3
+
+    raysPerSecond: ->
+        return @raysTraced / @elapsedSeconds()
 
     getState: ->
         return [
@@ -191,138 +348,6 @@ class Renderer
             o += 11
             @segments.push(new Segment(
                 x0, y0, x1, y1, diffuse, reflective, transmissive))
-
-    stop: ->
-        @running = false
-
-    start: ->
-        @running = true
-        @workCookie++
-        for w in @workers
-            @initWorker(w)
-
-    workerMessage: (event) ->
-        worker = event.target
-        msg = event.data
-        n = @width * @height
-        d = @counts
-
-        # The work unit we just got back was stemped with a cookie indicating
-        # which version of our scene it belonged with. If this is older than
-        # the buffer's cookie, we must discard the work. If it's the same, we can
-        # merge it with the existing buffer. If it's newer, we need to begin a
-        # fresh buffer.
-
-        if msg.cookie > @bufferCookie
-            @raysTraced = 0
-            for i in [0..n] by 1
-                d[i] = 0
-            @bufferCookie = msg.cookie
-
-            # Immediately kill any other threads that are working on a job older than this buffer.
-            for w in @workers
-                if w._latestCookie and w._latestCookie < @bufferCookie
-                    @initWorker(w)
-
-        if msg.cookie == @bufferCookie
-            s = new Uint32Array(msg.counts)
-            for i in [0..n] by 1
-                d[i] += s[i]
-            @raysTraced += msg.numRays
-            @callback()
-
-        @scheduleWork(worker)
-
-    scheduleWork: (worker) ->
-        if @workCookie != @bufferCookie
-            # Parameters changing; use a minimal batch size
-            numRays = 1000
-        else
-            # Scale batches of work so they get longer after the image has settled
-            numRays = 0 | Math.min(199999, Math.max(1000, @raysTraced / 2))
-
-        worker._latestCookie = @workCookie
-        worker._numRays = numRays
-
-        worker.postMessage({
-            'job': 'trace',
-            'width': @width,
-            'height': @height,
-            'lightX': @lightX,
-            'lightY': @lightY,
-            'segments': @walls.concat(@segments),
-            'numRays': numRays,
-            'cookie': @workCookie,
-            })
-
-    initWorker: (worker, delay) ->
-        # (Re)initialize a worker
-
-        index = worker._index
-        worker.terminate() if worker.terminate
-
-        worker = new Worker(@workerURI)
-        worker._index = index
-        worker._latestCookie = null
-        worker._numRays = 0
-
-        @workers[index] = worker
-        worker.addEventListener('message', (e) => @workerMessage(e))
-        @scheduleWork(worker)
-
-    clear: ->
-        # Increment the version cookie on our scene, while we allow
-        # older versions to draw anyway. Otherwise, we'll keep preempting
-        # ourselves before a single frame is rendered.
-        @workCookie++
-
-        @startTime = new Date
-
-        if @running
-            # If any threads are running really large batches, reset them now.
-            for w in @workers
-                if w._numRays >= 10000
-                    @initWorker(w)
-
-    elapsedSeconds: ->
-        t = new Date()
-        return (t.getTime() - @startTime.getTime()) * 1e-3
-
-    raysPerSecond: ->
-        return @raysTraced / @elapsedSeconds()
-
-    drawLight: (br) ->
-        # Draw the current simulation results to our Canvas
-
-        br = Math.exp(1 + 10 * @exposure) / @raysTraced
-
-        n = @width * @height
-        pix = @pixels
-        c = @counts
-        i = 0
-        j = 0
-
-        while j != n
-            v = c[j++] * br
-            pix[i++] = v
-            pix[i++] = v
-            pix[i++] = v
-            pix[i++] = 0xFF
-
-        @pixelImage.data.set(pix)
-        @ctx.putImageData(@pixelImage, 0, 0)
-
-    drawSegments: (style, width) ->
-        # Draw lines over each segment in our scene
-
-        @ctx.strokeStyle = style
-        @ctx.lineWidth = width
-
-        for s in @segments
-            @ctx.beginPath()
-            @ctx.moveTo(s.x0, s.y0)
-            @ctx.lineTo(s.x1, s.y1)
-            @ctx.stroke()
 
 
 class UndoTracker
@@ -482,21 +507,13 @@ class GardenUI
             $('#help').hide()
 
         # Set up our 'exposure' slider
-        @exposureSlider = new VSlider $('#exposureSlider'), $('#workspace')
-        @exposureSlider.setValue(@renderer.exposure)
-
-        @exposureSlider.valueChanged = (v) =>
-            @renderer.exposure = v
-            @redraw()
-
-        @exposureSlider.beginChange = () =>
-            @undo.checkpoint()
-
-        @exposureSlider.endChange = () =>
-            @updateLink()
+        do (e = new VSlider $('#exposureSlider'), $('#workspace')) =>
+            e.setValue(@renderer.exposure)
+            e.valueChanged = (v) => @renderer.setExposure(v)
+            e.beginChange = () => @undo.checkpoint()
+            e.endChange = () => @updateLink()
 
         @renderer.callback = () =>
-            @redraw()
             $('#raysTraced').text(@renderer.raysTraced)
             $('#raySpeed').text(@renderer.raysPerSecond()|0)
 
@@ -507,17 +524,21 @@ class GardenUI
                 @undo.checkpoint()
                 [x, y] = @mouseXY(e)
 
+                @renderer.trimSegments()
                 @renderer.segments.push(new Segment(x, y, x, y,
                     @material[0].value, @material[1].value, @material[2].value))
 
-                @renderer.clear()
                 @drawingSegment = true
-                @redraw()
+                @renderer.showSegments = true
+                @renderer.redraw()
+
                 e.preventDefault()
 
         $('body')
             .mouseup (e) =>
                 @drawingSegment = false
+                @renderer.showSegments = false
+                @renderer.redraw()
                 @updateLink()
 
             .mousemove (e) =>
@@ -525,8 +546,13 @@ class GardenUI
                 [x, y] = @mouseXY(e)
                 s = @renderer.segments[@renderer.segments.length - 1]
                 s.setPoint1(x, y)
+
+                # Asynchronously start rendering the new scene
                 @renderer.clear()
-                @redraw()
+
+                # Immediately draw the updated segments
+                @renderer.redraw()
+
                 e.preventDefault()
 
         @material = [
@@ -541,23 +567,19 @@ class GardenUI
             @renderer.segments = []
             @renderer.clear()
             @updateLink()
-            @redraw()
 
         (new Button $('#undoButton')).click = () =>
             @undo.undo()
             @exposureSlider.setValue(@renderer.exposure)
             @updateLink()
-            @redraw()
 
         (new Button $('#redoButton')).click = () =>
             @undo.redo()
             @exposureSlider.setValue(@renderer.exposure)
             @updateLink()
-            @redraw()
 
         (new Button $('#pngButton')).click = () =>
-            @renderer.drawLight()
-            document.location.href = @renderer.canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
+            document.location.href = @renderer.toDataURL('image/png').replace('image/png', 'image/octet-stream')
 
         (new Button $('#linkButton')).click = () =>
             @updateLink()
@@ -569,11 +591,6 @@ class GardenUI
     mouseXY: (e) ->
         o = $(@renderer.canvas).offset()
         return [e.pageX - o.left, e.pageY - o.top]
-
-    redraw: ->
-        @renderer.drawLight()
-        if @drawingSegment
-            @renderer.drawSegments('#ff8', 3)
 
     initMaterialSlider: (sel, defaultValue) ->
         widget = new HSlider $(sel)
