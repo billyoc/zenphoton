@@ -90,43 +90,66 @@
         return if i >= e
 
 
-@renderLoop = (s, d, b) ->
-    # Unrolled inner loop for rendering an image
-
-    i = 0
-    j = 0
-    n = s.length
-
-    loop
-        v = c[j++] * b
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = 0xFF
-
-        v = c[j++] * b
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = 0xFF
-
-        v = c[j++] * b
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = 0xFF
-
-        v = c[j++] * b
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = v
-        pix[i++] = 0xFF
-
-        return if j >= n
+@testClampedArray = () ->
+    c = new Uint8ClampedArray(1)
+    c[0] = 300
+    return c[0] == 255
 
 
-@job_trace = (msg) ->
+if @testClampedArray()
+    # Normal image rendering loop
+
+    @renderLoop = (s, d, b) ->
+        i = 0
+        j = 0
+        n = s.length
+        loop
+            d[i++] = d[i++] = d[i++] = s[j++] * b
+            d[i++] = 0xFF
+            d[i++] = d[i++] = d[i++] = s[j++] * b
+            d[i++] = 0xFF
+            d[i++] = d[i++] = d[i++] = s[j++] * b
+            d[i++] = 0xFF
+            d[i++] = d[i++] = d[i++] = s[j++] * b
+            d[i++] = 0xFF
+            return if j >= n
+
+else
+    # Image rendering loop with explicit clamps, in case Uint8ClampedArray()
+    # isn't actually clamping like it's supposed to. (This seems to be the case
+    # on current versions of Webkit, blan.)
+
+    @renderLoop = (s, d, b) ->
+        i = 0
+        j = 0
+        n = s.length
+        loop
+            v = 0 | (s[j++] * b)
+            v = 255 if v > 255
+            d[i++] = d[i++] = d[i++] = v
+            d[i++] = 0xFF
+
+            v = 0 | (s[j++] * b)
+            v = 255 if v > 255
+            d[i++] = d[i++] = d[i++] = v
+            d[i++] = 0xFF
+
+            v = 0 | (s[j++] * b)
+            v = 255 if v > 255
+            d[i++] = d[i++] = d[i++] = v
+            d[i++] = 0xFF
+
+            v = 0 | (s[j++] * b)
+            v = 255 if v > 255
+            d[i++] = d[i++] = d[i++] = v
+            d[i++] = 0xFF
+
+            return if j >= n
+
+
+@trace = (msg) ->
     # Raytracing loop! Traces a scene, passes back the histogram array afterward.
+    # Returns a buffer object.
 
     width = msg.width
     height = msg.height
@@ -134,7 +157,6 @@
     lightY = msg.lightY
     segments = msg.segments
     numRays = msg.numRays
-    cookie = msg.cookie
 
     counts = new Uint32Array(width * height)
 
@@ -313,45 +335,63 @@
                 # Absorbed
                 break
 
+    return counts
+
+
+@job_trace = (msg) ->
+    # Trace rays, and send back the buffer.
+
+    c = @trace(msg)
     @postMessage({
-        'cookie': cookie,
+        'job': msg.job,
+        'cookie': msg.cookie,
         'numRays': msg.numRays,
-        'counts': counts.buffer,
-    }, [counts.buffer])
-
-
-@job_clear = (msg) ->
-    # Empty out our accumulator buffer.
-    @accumulator = null
-    @raysTraced = 0
+        'counts': c.buffer,
+    }, [c.buffer])
 
 
 @job_accumulate = (msg) ->
-    # Accumulate samples from another thread's raytracing.
+    # Accumulate samples from another thread's raytracing. No response.
 
-    s = new Uint32Array(msg.counts)
-    @raysTraced += msg.numRays
+    src = new Uint32Array(msg.counts)
 
-    d = @accumulator
-    d = @accumulator = new Uint32Array(s.length) if not d
+    if msg.cookie > @cookie
+        # Newer cookie; start over
+        @accumulator = src
+        @raysTraced = msg.numRays
+        @cookie = msg.cookie
 
-    accumLoop(s, d)
+    else if msg.cookie == @cookie
+        # Accumulator matches
+        @raysTraced += msg.numRays
+        accumLoop(src, @accumulator)
 
 
 @job_render = (msg) ->
     # Using the current accumulator state, render an RGBA image.
 
-    if @accumulator
-        pix = new Uint8ClampedArray @accumulator.length
-        br = Math.exp(1 + 10 * msg.exposure) / @raysTraced
-        renderLoop(@accumulator, pix, br)
+    pix = new Uint8ClampedArray(4 * @accumulator.length)
+    br = Math.exp(1 + 10 * msg.exposure) / @raysTraced
+    renderLoop(@accumulator, pix, br)
 
     @postMessage({
+        'job': msg.job,
+        'cookie': @cookie,
         'raysTraced': @raysTraced,
         'pixels': pix.buffer,
     }, [pix.buffer])
 
 
+@job_firstTrace = (msg) ->
+    # Trace rays, replace the entire accumulator buffer with the new counts,
+    # and return a rendered image. This is the fastest way to initialize the
+    # accumulator with data from a modified scene, so this is what we use during
+    # interactive rendering.
+
+    @accumulator = @trace(msg)
+    @raysTraced = msg.numRays
+    @cookie = msg.cookie
+    @job_render(msg)
 
 
 @onmessage = (event) =>
