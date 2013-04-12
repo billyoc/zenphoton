@@ -95,6 +95,24 @@ class Renderer
 
         @resize()
 
+    browserSupported: ->
+        # Does this browser have the features we need?
+
+        # Canvas
+        return false unless @canvas   
+        return false unless @canvas.getContext
+        return false unless @canvas.getContext('2d')
+
+        # Web Workers
+        return false unless Worker
+
+        # Typed Arrays
+        return false unless Uint8ClampedArray
+        return false unless Uint32Array
+
+        # Good to go!
+        return true
+
     trimSegments: ->
         # Remove any very small segments from the end of our list
 
@@ -493,8 +511,16 @@ class Button
 
 class GardenUI
     constructor: (canvasId) ->
+
         @renderer = new Renderer('histogramImage')
         @undo = new UndoTracker(@renderer)
+
+        # First thing first, check compatibility. If we're good, hide the error message and show the help.
+        # If not, bail out now.
+        return unless @renderer.browserSupported()
+        $('#notsupported').hide()
+        $('#help').show()
+        $('#leftColumn, #rightColumn').fadeIn(1000)
 
         # Set up our 'exposure' slider
         do (e = @exposureSlider = new VSlider $('#exposureSlider'), $('#workspace')) =>

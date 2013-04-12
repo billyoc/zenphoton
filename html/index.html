@@ -18,6 +18,13 @@
             font-family: 'Roboto', sans-serif;
         }
 
+        h1 {
+            color: rgba(255, 255, 240, 1.0);
+            font-size: 20px;
+            padding: 0 0 0.25em 0;
+            margin: 0;
+        }
+
         #centerColumn {
             width: 1024px;
             margin: 0 auto;
@@ -44,6 +51,7 @@
             left: -92px;
             top: -1px;
             width: 88px;
+            display: none;
         }
 
         #rightColumn {
@@ -51,6 +59,7 @@
             left: 1028px;
             top: -1px;
             width: 86px;
+            display: none;
         }
 
         #leftColumn .sep {
@@ -61,6 +70,7 @@
 
         #help {
             position: absolute;
+            display: none;
             left: 0;
             right: 0;
             bottom: 0;
@@ -68,6 +78,22 @@
             text-align: center;
             font-size: 48px;
             color: rgba(0, 0, 0, 0.8);
+        }
+
+        #notsupported {
+            position: absolute;
+            display: block;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 75%;
+            text-align: center;
+        }
+
+        #notsupported p {
+            font-family: 'Verdana', sans-serif;
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.35);
         }
 
         .ui-box {
@@ -117,13 +143,6 @@
             text-align: center;
         }
 
-        h1 {
-            color: rgba(255, 255, 240, 1.0);
-            font-size: 20px;
-            padding: 0 0 0.25em 0;
-            margin: 0;
-        }
-
         .hbox {
             padding: 0.25em 0;
         }
@@ -165,6 +184,18 @@
         <div id='workspace'>
             <canvas id='histogramImage'></canvas>
 
+            <div id='notsupported'>
+                <h1>Oh no.</h1>
+                <p>Zen photon garden is an interactive raytracer art-toy for HTML5 browsers.</p>
+                <p>But it looks like your browser isn't supported!</p>
+                <p>Try the latest version of Chrome, Safari, or Firefox.</p>
+                <p>You'll need JavaScript, Canvas, Web Workers, and Typed Arrays.</p>
+            </div>
+
+            <div id='help'>
+                Draw on me.
+            </div>
+
             <div id='leftColumn'>
                 <div class='ui-box ui-inactive' id='pngButton'>Save PNG…</div>
                 <div class='ui-box ui-inactive' id='linkButton'>Share link…</div>
@@ -180,10 +211,6 @@
 
             <div id='rightColumn'>
                 <div class='ui-box ui-inactive' id='exposureSlider'><span class='glyph'>↕</span>Exposure</div>
-            </div>
-
-            <div id='help'>
-                Draw on me.
             </div>
 
         </div>
