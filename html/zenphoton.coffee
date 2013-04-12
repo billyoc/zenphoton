@@ -497,7 +497,7 @@ class GardenUI
         @undo = new UndoTracker(@renderer)
 
         # Set up our 'exposure' slider
-        do (e = new VSlider $('#exposureSlider'), $('#workspace')) =>
+        do (e = @exposureSlider = new VSlider $('#exposureSlider'), $('#workspace')) =>
             e.setValue(@renderer.exposure)
             e.valueChanged = (v) => @renderer.setExposure(v)
             e.beginChange = () => @undo.checkpoint()
@@ -579,6 +579,7 @@ class GardenUI
         saved = document.location.hash.replace('#', '')
         if saved
             @renderer.setStateBlob(atob(saved))
+            @exposureSlider.setValue(@renderer.exposure)
         @renderer.clear()
 
         # If the scene is empty, let our 'first run' help show through.
