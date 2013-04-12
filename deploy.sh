@@ -1,6 +1,6 @@
-coffee -c .
+#!/bin/sh
 
-FILES="*.js favicon.ico favicon.gif missing.html index.html"
-
+coffee -c html
+FILES="html/*.js html/*.html html/*.gif html/*.ico"
 scp $FILES scanlime@scanlime.org:~/zenphoton.com/
 
