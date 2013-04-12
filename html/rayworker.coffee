@@ -72,19 +72,19 @@
 
 
 @accumLoop = (s, d) ->
-    # Unrolled inner loop for summing histogram data
+    # Unrolled inner loop for summing histogram data, with saturation.
 
     i = 0
     e = s.length
 
     loop
-        d[i] += s[i]
+        d[i] = 0xFFFFFFFF if (d[i] += s[i]) > 0xFFFFFFFF
         i++
-        d[i] += s[i]
+        d[i] = 0xFFFFFFFF if (d[i] += s[i]) > 0xFFFFFFFF
         i++
-        d[i] += s[i]
+        d[i] = 0xFFFFFFFF if (d[i] += s[i]) > 0xFFFFFFFF
         i++
-        d[i] += s[i]
+        d[i] = 0xFFFFFFFF if (d[i] += s[i]) > 0xFFFFFFFF
         i++
 
         return if i >= e
