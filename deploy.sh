@@ -1,6 +1,8 @@
 #!/bin/sh
 
-coffee -c html
-FILES="html/*.js html/*.html html/*.gif html/*.ico"
-scp $FILES scanlime@scanlime.org:~/zenphoton.com/
+set -e
+./build.sh
 
+FILES="html/*.js html/*.html html/*.gif html/*.ico html/*.ttf"
+
+scp $FILES scanlime@scanlime.org:~/zenphoton.com/
