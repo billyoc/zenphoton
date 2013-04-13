@@ -121,7 +121,7 @@ class GardenUI
         ]
 
         # Show existing segments when hovering over undo/redo/clear
-        $('#clearButton, #undoButton, #redoButton')
+        $('.show-segments-on-hover')
             .mouseenter (e) =>
                 @renderer.showSegments++
                 @renderer.redraw()
@@ -129,29 +129,38 @@ class GardenUI
                 @renderer.showSegments--
                 @renderer.redraw()
 
-        (new Button $('#clearButton')).click = () =>
-            return if !@renderer.segments.length
-            @undo.checkpoint()
-            @renderer.segments = []
-            @renderer.clear()
-            @updateLink()
+        $('#clearButton').button()
+            .click (e) =>
+                return if !@renderer.segments.length
+                @undo.checkpoint()
+                @renderer.segments = []
+                @renderer.clear()
+                @updateLink()
 
-        (new Button $('#undoButton')).click = () =>
-            @undo.undo()
-            @exposureSlider.setValue(@renderer.exposure)
-            @updateLink()
+        $('#undoButton').button()
+            .hotkey('ctrl+z')
+            .hotkey('meta+z')
+            .click (e) =>
+                @undo.undo()
+                @exposureSlider.setValue(@renderer.exposure)
+                @updateLink()
 
-        (new Button $('#redoButton')).click = () =>
-            @undo.redo()
-            @exposureSlider.setValue(@renderer.exposure)
-            @updateLink()
+        $('#redoButton').button()
+            .hotkey('ctrl+y')
+            .hotkey('meta+shift+z')
+            .click (e) =>
+                @undo.redo()
+                @exposureSlider.setValue(@renderer.exposure)
+                @updateLink()
 
-        (new Button $('#pngButton')).click = () =>
-            document.location.href = @renderer.toDataURL('image/png').replace('image/png', 'image/octet-stream')
+        $('#pngButton').button()
+            .click () =>
+                document.location.href = @renderer.toDataURL('image/png').replace('image/png', 'image/octet-stream')
 
-        (new Button $('#linkButton')).click = () =>
-            @updateLink()
-            window.prompt("Copy this URL to share your garden.", document.location)
+        $('#linkButton').button()
+            .click () =>
+                @updateLink()
+                window.prompt("Copy this URL to share your garden.", document.location)
 
         # Load saved state, if any
         saved = document.location.hash.replace('#', '')

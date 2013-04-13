@@ -26,15 +26,6 @@
 #
 
 
-$.fn.uiActive = (n) ->
-    if n
-        @addClass('ui-active')
-        @removeClass('ui-inactive')
-    else
-        @removeClass('ui-active')
-        @addClass('ui-inactive')
-
-
 class VSlider
     # Events
     beginChange: () ->
@@ -118,7 +109,7 @@ class HSlider
 
 class Button
     # Events
-    click: () ->
+    onClick: () ->
 
     constructor: (@button) ->
         @button
@@ -133,10 +124,38 @@ class Button
                 @dragging = false
                 @button.uiActive false
                 $('body').css cursor: 'auto'
-                @click()
+                @onClick(e)
 
         $('body')
             .mouseup (e) =>
                 @dragging = false
                 @button.uiActive false
                 $('body').css cursor: 'auto'
+
+    click: (handler) ->
+        @onClick = handler
+        return this
+
+    hotkey: (key) ->
+        # We only use 'keydown' here... for keys that are also used by the browser UI,
+        # keyup and keypress don't work for all keys and platforms we care about.
+
+        $(document).bind 'keydown', key, (e) =>
+            @button.uiActive(true)
+            setTimeout (() => @button.uiActive(false)), 100
+            @onClick(e)
+
+        return this
+
+
+$.fn.uiActive = (n) ->
+    if n
+        @addClass('ui-active')
+        @removeClass('ui-inactive')
+    else
+        @removeClass('ui-active')
+        @addClass('ui-inactive')
+    return this
+
+$.fn.button = () ->
+    return new Button this
