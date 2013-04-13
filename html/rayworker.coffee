@@ -72,6 +72,25 @@
 
 
 @accumLoop = (s, d) ->
+    # Unrolled inner loop for summing histogram data.
+
+    i = 0
+    e = s.length
+
+    loop
+        d[i] += s[i]
+        i++
+        d[i] += s[i]
+        i++
+        d[i] += s[i]
+        i++
+        d[i] += s[i]
+        i++
+
+        return if i >= e
+
+
+@accumLoopSat = (s, d) ->
     # Unrolled inner loop for summing histogram data, with saturation.
 
     i = 0
@@ -357,14 +376,21 @@ else
 
     if msg.cookie > @cookie
         # Newer cookie; start over
+
         @accumulator = src
         @raysTraced = msg.numRays
         @cookie = msg.cookie
 
     else if msg.cookie == @cookie
-        # Accumulator matches
+        # Accumulator matches.
+        # Use our saturation-robust accumulator loop only if enough rays
+        # have been cast such that saturation is a concern.
+
         @raysTraced += msg.numRays
-        accumLoop(src, @accumulator)
+        if @raysTraced >= 0xffffff
+            accumLoopSat(src, @accumulator)
+        else
+            accumLoop(src, @accumulator)
 
 
 @job_render = (msg) ->
