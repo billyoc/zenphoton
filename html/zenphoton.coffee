@@ -91,7 +91,7 @@ class Renderer
         @segments = []
         @exposure = 0.5
         @running = false
-        @showSegments = false
+        @showSegments = 0
 
         @resize()
 
@@ -545,15 +545,16 @@ class GardenUI
                     @material[0].value, @material[1].value, @material[2].value))
 
                 @drawingSegment = true
-                @renderer.showSegments = true
+                @renderer.showSegments++
                 @renderer.redraw()
 
                 e.preventDefault()
 
         $('body')
             .mouseup (e) =>
+                return unless @drawingSegment
                 @drawingSegment = false
-                @renderer.showSegments = false
+                @renderer.showSegments--
                 @renderer.redraw()
                 @updateLink()
 
@@ -576,6 +577,15 @@ class GardenUI
             @initMaterialSlider('#reflectiveSlider', 0.0),
             @initMaterialSlider('#transmissiveSlider', 0.0),
         ]
+
+        # Show existing segments when hovering over undo/redo/clear
+        $('#clearButton, #undoButton, #redoButton')
+            .mouseenter (e) =>
+                @renderer.showSegments++
+                @renderer.redraw()
+            .mouseleave (e) =>
+                @renderer.showSegments--
+                @renderer.redraw()
 
         (new Button $('#clearButton')).click = () =>
             return if !@renderer.segments.length
