@@ -44,9 +44,12 @@ if not Math.imul
         bl = b & 0xffff
         return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0)|0)
 
-heap = new ArrayBuffer(4 * 1024 * 1024)
+heap = new ArrayBuffer(8 * 1024 * 1024)
 F32 = new Float32Array(heap)
 U32 = new Uint32Array(heap)
+
+zeroes = new ArrayBuffer(64 * 1024)
+Z32 = new Uint32Array(zeroes)
 
 stdlib =
     Math: Math
@@ -70,7 +73,7 @@ allocRandomBuffer = (ptr) ->
     # from needing to call a non-asm function from our inner loops.
 
     for n in [ptr .. ptr + 0xFFFF] by 4
-        F32[ptr>>2] = Math.random()
+        F32[n>>2] = Math.random()
     return ptr + 0x10000
 
 
@@ -115,18 +118,35 @@ traceWithHeap = (ptr, msg) ->
 
     AsmFn.trace(counts, msg.width, msg.height, msg.lightX, msg.lightY, msg.numRays, sceneBegin, sceneEnd, randBuffer)
 
+memzero = (begin, end) ->
+    # Quickly zero an area of the heap, by splatting data from a zero buffer.
+    # Must be 32-bit aligned.
+
+    loop
+        l = end - begin
+        if l <= 0
+            return
+
+        if l >= zeroes.byteLength
+            U32.set(Z32, begin >> 2)
+            begin += zeroes.byteLength
+        else
+            U32.set(Z32.slice(0, l >> 2), begin >> 2)
+            begin += l
+
 
 #####################################################################
 # Job handlers
 
 
 @job_trace = (msg) ->
-    # Trace rays, and transfer the entire heap back to the caller to avoid copying results.
+    # Trace rays, and transfer back a copy of the rendering
 
-    return #xxx
-
+    # Heap layout
     counts = 0
     endCounts = alloc32(counts, msg.width, msg.height)
+
+    memzero(counts, endCounts)
     traceWithHeap(counts, msg)
     result = heap.slice(counts, endCounts)
 
@@ -134,23 +154,24 @@ traceWithHeap = (ptr, msg) ->
         job: msg.job,
         cookie: msg.cookie,
         numRays: msg.numRays,
-        counts: heap,
-    }, [heap])
+        counts: result,
+    }, [result])
 
 
 @job_accumulate = (msg) ->
     # Accumulate samples from another thread's raytracing. No response.
 
-    return #xxx
-
     # Heap layout
     accumulator = 0
-    src = alloc32(accumulator, msg.width, msg.height)
+    src = alloc32(accumulator, @width, @height)
+
+    # Input buffer
+    counts = new Uint32Array msg.counts
 
     if msg.cookie > @cookie
         # Newer cookie; start over
 
-        U32.set(msg.counts, accumulator>>2)
+        U32.set(counts, accumulator>>2)
         @raysTraced = msg.numRays
         @cookie = msg.cookie
 
@@ -159,8 +180,8 @@ traceWithHeap = (ptr, msg) ->
         # Use our saturation-robust accumulator loop only if enough rays
         # have been cast such that saturation is a concern.
 
-        U32.set(msg.counts, src>>2)
-        n = msg.width * msg.height
+        U32.set(counts, src>>2)
+        n = @width * @height
         @raysTraced += msg.numRays
 
         if @raysTraced >= 0xffffff
@@ -199,8 +220,15 @@ traceWithHeap = (ptr, msg) ->
     # accumulator with data from a modified scene, so this is what we use during
     # interactive rendering.
 
+    @width = msg.width
+    @height = msg.height
+
     # Heap layout
     accumulator = 0
+    end = alloc32(accumulator, msg.width, msg.height)
+
+    # Zero the accumulator
+    memzero(accumulator, end)
 
     traceWithHeap(accumulator, msg)
     @raysTraced = msg.numRays

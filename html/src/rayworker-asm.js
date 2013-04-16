@@ -71,9 +71,9 @@ function AsmModule (stdlib, foreign, heap) {
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~(b - t);
+            U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~t;
+            U32[j>>2] = (U32[j>>2]|0) + ~~t;
             y = +(y + g);
             i = (i + u)|0;
 
@@ -81,9 +81,9 @@ function AsmModule (stdlib, foreign, heap) {
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~(b - t);
+            U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~t;
+            U32[j>>2] = (U32[j>>2]|0) + ~~t;
             y = +(y + g);
             i = (i + u)|0;
 
@@ -91,9 +91,9 @@ function AsmModule (stdlib, foreign, heap) {
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~(b - t);
+            U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~t;
+            U32[j>>2] = (U32[j>>2]|0) + ~~t;
             y = +(y + g);
             i = (i + u)|0;
 
@@ -101,9 +101,9 @@ function AsmModule (stdlib, foreign, heap) {
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~(b - t);
+            U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
-            U32[j>>2] = U32[j>>2]|0 + ~~t;
+            U32[j>>2] = (U32[j>>2]|0) + ~~t;
             y = +(y + g);
             i = (i + u)|0;
         }
@@ -196,25 +196,25 @@ function AsmModule (stdlib, foreign, heap) {
             // Unrolled 4x
 
             g = ~~(+(U32[s>>2]|0) * b);
-            //if ((g - 0xFF) >> 31) g = 0xFF;
+            if (~~(g - 0xFF) > 0) g = 0xFF;
             U32[d>>2] = 0xFF000000 | (g << 16) | (g << 8) | g;
             s = (s + 4)|0;
             d = (d + 4)|0;
 
             g = ~~(+(U32[s>>2]|0) * b);
-            //if ((g - 0xFF) >> 31) g = 0xFF;
+            if (~~(g - 0xFF) > 0) g = 0xFF;
             U32[d>>2] = 0xFF000000 | (g << 16) | (g << 8) | g;
             s = (s + 4)|0;
             d = (d + 4)|0;
 
             g = ~~(+(U32[s>>2]|0) * b);
-            //if ((g - 0xFF)|0 > 0) g = 0xFF;
+            if (~~(g - 0xFF) > 0) g = 0xFF;
             U32[d>>2] = 0xFF000000 | (g << 16) | (g << 8) | g;
             s = (s + 4)|0;
             d = (d + 4)|0;
 
             g = ~~(+(U32[s>>2]|0) * b);
-            //if ((g - 0xFF)|0 > 0) g = 0xFF;
+            if (~~(g - 0xFF) > 0) g = 0xFF;
             U32[d>>2] = 0xFF000000 | (g << 16) | (g << 8) | g;
             s = (s + 4)|0;
             d = (d + 4)|0;
@@ -374,7 +374,7 @@ function AsmModule (stdlib, foreign, heap) {
                 y0 = rayOriginY;
                 x1 = intX;
                 y1 = intY;
-                
+
                 /*
                  * Modified version of Xiaolin Wu's antialiased line algorithm:
                  * http://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
