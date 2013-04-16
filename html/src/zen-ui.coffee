@@ -104,7 +104,8 @@ class GardenUI
                 return unless @drawingSegment
                 [x, y] = @mouseXY(e)
                 s = @renderer.segments[@renderer.segments.length - 1]
-                s.setPoint1(x, y)
+                s.x1 = x
+                s.y1 = y
 
                 # Asynchronously start rendering the new scene
                 @renderer.clear()

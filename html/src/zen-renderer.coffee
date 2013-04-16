@@ -27,33 +27,6 @@
 
 class Segment
     constructor: (@x0, @y0, @x1, @y1, @diffuse, @reflective, @transmissive) ->
-        @calculateProbabilities()
-        @calculateNormal()
-
-    setDiffuse: (@diffuse) ->
-        @calculateProbabilities()
-
-    setReflective: (reflective) ->
-        @calculateProbabilities()
-
-    setTransmissive: (transmissive) ->
-        @calculateProbabilities()
-
-    setPoint0: (@x0, @y0) ->
-        @calculateNormal()
-
-    setPoint1: (@x1, @y1) ->
-        @calculateNormal()
-
-    calculateProbabilities: ->
-        @d1 = @diffuse
-        @r2 = @d1 + @reflective
-        @t3 = @r2 + @transmissive
-
-    calculateNormal: ->
-        l = @length()
-        @xn = (@y0 - @y1) / l
-        @yn = (@x1 - @x0) / l
 
     length: ->
         dx = @x1 - @x0

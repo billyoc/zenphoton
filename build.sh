@@ -6,6 +6,7 @@ set -e
 (
     cat html/src/header.js
     (
+        cat html/src/rayworker-asm.js
         coffee -c -p html/src/rayworker.coffee
     ) | jsmin
 ) > html/rayworker.js
