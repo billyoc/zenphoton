@@ -104,7 +104,9 @@ class HSlider
 
     setValue: (@value) ->
         w = @button.innerWidth()
-        @button.children('.ui-hslider').width(w * @value)
+        @button.children('.ui-fill')
+            .width(w * @value)
+            .show()
 
 
 class Button

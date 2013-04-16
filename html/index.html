@@ -115,7 +115,6 @@
             -khtml-user-select: none;
             -webkit-user-select: none;
             user-select: none;
-
         }
 
         .ui-active {
@@ -126,24 +125,26 @@
         }
 
         .ui-inactive:hover {
-            background: #222;
+            background: rgba(255, 255, 255, 0.125);
             color: #fff;
         }
 
-        .ui-hslider {
+        .ui-fill {
             position: absolute;
             left: 0;
             top: 0;
             height: 100%;
-            width: 50px;
+            width: 100%;
             background: #d79e43;
             z-index: -1;
+            display: none;
         }
 
         .glyph {
             float: left;
-            width: 16px;
-            padding: 0 2px 0 0;
+            width: 13px;
+            padding: 0;
+            margin: 0 2px 0 0;
             text-align: center;
         }
 
@@ -210,9 +211,12 @@
                     <div class='ui-box ui-inactive' id='clearButton'><span class='glyph'>×</span>Clear</div>
                 </div>
                 <div class='sep'>•</div>
-                <div class='ui-box' id='diffuseSlider'><div class='ui-hslider'></div>Diffuse</div>
-                <div class='ui-box' id='reflectiveSlider'><div class='ui-hslider'></div>Reflective</div>
-                <div class='ui-box' id='transmissiveSlider'><div class='ui-hslider'></div>Transmissive</div>
+                <div class='ui-box ui-inactive' id='diffuseSlider'><div class='ui-fill'></div>Diffuse</div>
+                <div class='ui-box ui-inactive' id='reflectiveSlider'><div class='ui-fill'></div>Reflective</div>
+                <div class='ui-box ui-inactive' id='transmissiveSlider'><div class='ui-fill'></div>Transmissive</div>
+                <div class='sep'>•</div>
+                <div class='ui-box ui-inactive' id='lineToolButton'><div class='ui-fill'></div><span class='glyph'>D</span>Draw lines</div>
+                <div class='ui-box ui-inactive' id='lightToolButton'><div class='ui-fill'></div><span class='glyph'>L</span>Light</div>
             </div>
 
             <div id='rightColumn'>
