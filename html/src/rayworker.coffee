@@ -67,16 +67,6 @@ alloc32 = (ptr, width, height) ->
     return ptr + (4 * width * height)
 
 
-allocRandomBuffer = (ptr) ->
-    # Fill a buffer full of random numbers, for use by our asm.js code.
-    # We can reuse random numbers to improve speed, plus this prevents us
-    # from needing to call a non-asm function from our inner loops.
-
-    for n in [ptr .. ptr + 0xFFFFF] by 4
-        F32[n>>2] = Math.random()
-    return ptr + 0x100000
-
-
 allocScene = (ptr, scene) ->
     # Transcribe our scene from an array of Segment objects into a flat list of floats in our heap
 
@@ -112,11 +102,13 @@ traceWithHeap = (ptr, msg) ->
 
     # Heap layout
     counts = ptr
-    randBuffer = alloc32(counts, msg.width, msg.height)
-    sceneBegin = allocRandomBuffer(randBuffer)
+    sceneBegin = alloc32(counts, msg.width, msg.height)
     sceneEnd = allocScene(sceneBegin, msg.segments)
 
-    AsmFn.trace(counts, msg.width, msg.height, msg.lightX, msg.lightY, msg.numRays, sceneBegin, sceneEnd, randBuffer)
+    # Use JavaScript's PRNG to seed our fast inlined PRNG
+    seed = (Math.random() * 0xFFFFFFFF)|0
+
+    AsmFn.trace(counts, msg.width, msg.height, msg.lightX, msg.lightY, msg.numRays, sceneBegin, sceneEnd, seed)
 
 memzero = (begin, end) ->
     # Quickly zero an area of the heap, by splatting data from a zero buffer.

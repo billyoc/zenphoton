@@ -224,7 +224,7 @@ function AsmModule (stdlib, foreign, heap) {
         }
     }
 
-    function trace (counts, width, height, lightX, lightY, numRays, sceneBegin, sceneEnd, randBuffer) {
+    function trace (counts, width, height, lightX, lightY, numRays, sceneBegin, sceneEnd, seed) {
         // Big ugly monolithic raytracing loop!
 
         counts = counts|0;
@@ -235,10 +235,15 @@ function AsmModule (stdlib, foreign, heap) {
         numRays = numRays|0;
         sceneBegin = sceneBegin|0;
         sceneEnd = sceneEnd|0;
-        randBuffer = randBuffer|0;
+        seed = seed|0;
 
-        // Use a cyclic buffer of precomputed random numbers
-        var randIndex = 0;
+        // Our inlined PRNG algorithm is the simple public domain algorithm from:
+        // http://burtleburtle.net/bob/rand/smallprng.html
+        var rng0 = 0xf1ea5eed;
+        var rng1 = 0;
+        var rng2 = 0;
+        var rng3 = 0;
+        var rng4 = 0;
 
         var t = 0.0;
 
@@ -289,13 +294,28 @@ function AsmModule (stdlib, foreign, heap) {
         var xn = 0.0;
         var yn = 0.0;
 
+        // Initialize the PRNG
+        rng1 = rng2 = rng3 = seed;
+        for (i=20;i; i = (i - 1)|0) {
+            rng4 = (rng0 - ((rng1 << 27) | (rng1 >>> 5)))|0;
+            rng0 = rng1 ^ ((rng2 << 17) | (rng2 >>> 15));
+            rng1 = (rng2 + rng3)|0;
+            rng2 = (rng3 + rng4)|0;
+            rng3 = (rng4 + rng0)|0;
+        }
+
         for (;numRays; numRays = (numRays - 1)|0) {
 
             ////////////////////////////////////////////////////////////////
             // Start a new ray, at the light source
 
-            t = (+F32[(randBuffer + randIndex)>>2]) * 6.283185307179586;
-            randIndex = (randIndex + 4) & 0xFFFFF;
+            // Random angle in [0, 2*pi)
+            rng4 = (rng0 - ((rng1 << 27) | (rng1 >>> 5)))|0;
+            rng0 = rng1 ^ ((rng2 << 17) | (rng2 >>> 15));
+            rng1 = (rng2 + rng3)|0;
+            rng2 = (rng3 + rng4)|0;
+            rng3 = (rng4 + rng0)|0;
+            t = (+(rng3>>>1)) * 2.9258361585343192e-09;
 
             rayOriginX = lightX;
             rayOriginY = lightY;
@@ -456,9 +476,14 @@ function AsmModule (stdlib, foreign, heap) {
                 ////////////////////////////////////////////////////////////////
                 // What happens to the ray now?
 
-                t = (+F32[(randBuffer + randIndex)>>2]);
-                randIndex = (randIndex + 4) & 0xFFFFF;
-
+                // Random uniform value in [0, 1)
+                rng4 = (rng0 - ((rng1 << 27) | (rng1 >>> 5)))|0;
+                rng0 = rng1 ^ ((rng2 << 17) | (rng2 >>> 15));
+                rng1 = (rng2 + rng3)|0;
+                rng2 = (rng3 + rng4)|0;
+                rng3 = (rng4 + rng0)|0;
+                t = (+(rng3>>>1)) * 4.656612873077393e-10;
+                
                 rayOriginX = intX;
                 rayOriginY = intY;
                 lastSeg = closestSeg;
@@ -466,8 +491,13 @@ function AsmModule (stdlib, foreign, heap) {
                 if (t < +F32[(closestSeg + 16) >> 2]) {
                     // Diffuse reflection. Angle randomized.
 
-                    t = (+F32[(randBuffer + randIndex)>>2]) * 6.283185307179586;
-                    randIndex = (randIndex + 4) & 0xFFFFF;
+                    // Random angle in [0, 2*pi)
+                    rng4 = (rng0 - ((rng1 << 27) | (rng1 >>> 5)))|0;
+                    rng0 = rng1 ^ ((rng2 << 17) | (rng2 >>> 15));
+                    rng1 = (rng2 + rng3)|0;
+                    rng2 = (rng3 + rng4)|0;
+                    rng3 = (rng4 + rng0)|0;
+                    t = (+(rng3>>>1)) * 2.9258361585343192e-09;
 
                     rayDirX = sin(t);
                     rayDirY = cos(t);
