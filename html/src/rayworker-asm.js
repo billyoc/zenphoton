@@ -449,9 +449,9 @@ function AsmModule (stdlib, foreign, heap) {
                 i = (counts + imul(hX, xpxl1 - 1) + imul(hY, ypxl1)) | 0;
                 t = +(~~yend);
                 t = yend - t;
-                U32[i>>2] = U32[i>>2]|0 + ~~(xgap * (1.0 - t));
+                U32[i>>2] = (U32[i>>2]|0) + ~~(xgap * (1.0 - t));
                 i = (i + hY)|0;
-                U32[i>>2] = U32[i>>2]|0 + ~~(xgap * t);
+                U32[i>>2] = (U32[i>>2]|0) + ~~(xgap * t);
                 intery = yend + gradient;
 
                 // Second endpoint
@@ -464,9 +464,9 @@ function AsmModule (stdlib, foreign, heap) {
                 i = (counts + imul(hX, xpxl2) + imul(hY, ypxl2)) | 0;
                 t = +(~~yend);
                 t = yend - t;
-                U32[i>>2] = U32[i>>2]|0 + ~~(xgap * (1.0 - t));
+                U32[i>>2] = (U32[i>>2]|0) + ~~(xgap * (1.0 - t));
                 i = (i + hY)|0;
-                U32[i>>2] = U32[i>>2]|0 + ~~(xgap * t);
+                U32[i>>2] = (U32[i>>2]|0) + ~~(xgap * t);
 
                 lineLoop(
                     (counts + imul(hX, xpxl1)) | 0,
