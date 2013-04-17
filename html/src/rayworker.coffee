@@ -35,14 +35,10 @@
 #####################################################################
 # asm.js setup
 
-# Polyfill from https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Math/imul
 if not Math.imul
-    Math.imul = (a, b) ->
-        ah = (a >>> 16) & 0xffff
-        al = a & 0xffff
-        bh = (b >>> 16) & 0xffff
-        bl = b & 0xffff
-        return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0)|0)
+    # This is close enough for our purposes. If we need it, real polyfill is at:
+    # https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Math/imul
+    Math.imul = (a, b) -> a * b
 
 heap = new ArrayBuffer(8 * 1024 * 1024)
 F32 = new Float32Array(heap)
