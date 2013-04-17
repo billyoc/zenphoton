@@ -67,7 +67,7 @@ function AsmModule (stdlib, foreign, heap) {
         for (;;) {
             // Unrolled 4x
 
-            if (((i - e)|0) > 0) return;
+            if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
@@ -77,7 +77,7 @@ function AsmModule (stdlib, foreign, heap) {
             y = +(y + g);
             i = (i + u)|0;
 
-            if (((i - e)|0) > 0) return;
+            if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
@@ -87,7 +87,7 @@ function AsmModule (stdlib, foreign, heap) {
             y = +(y + g);
             i = (i + u)|0;
 
-            if (((i - e)|0) > 0) return;
+            if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
@@ -97,7 +97,7 @@ function AsmModule (stdlib, foreign, heap) {
             y = +(y + g);
             i = (i + u)|0;
 
-            if (((i - e)|0) > 0) return;
+            if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
             j = i + imul(v, j)|0;
