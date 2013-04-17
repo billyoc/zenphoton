@@ -2,13 +2,20 @@
 
 set -e
 
+if [[ $1 == "debug" ]]; then
+    echo Debug build, not minified.
+    MINIFY=cat
+else
+    MINIFY=jsmin
+fi
+
 # Worker thread
 (
     cat html/src/header.js
     (
         cat html/src/rayworker-asm.js
         coffee -c -p html/src/rayworker.coffee
-    ) | jsmin
+    ) | $MINIFY
 ) > html/rayworker.js
 
 # Main file
@@ -23,5 +30,5 @@ set -e
             cat html/src/zen-ui.coffee
             cat html/src/zen-setup.coffee
         ) | coffee -p -s
-    ) | jsmin
+    ) | $MINIFY
 ) > html/zenphoton.js
