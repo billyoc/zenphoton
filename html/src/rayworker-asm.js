@@ -295,7 +295,7 @@ function AsmModule (stdlib, foreign, heap) {
             // Start a new ray, at the light source
 
             t = (+F32[(randBuffer + randIndex)>>2]) * 6.283185307179586;
-            randIndex = (randIndex + 4) & 0xFFFF;
+            randIndex = (randIndex + 4) & 0xFFFFF;
 
             rayOriginX = lightX;
             rayOriginY = lightY;
@@ -457,7 +457,7 @@ function AsmModule (stdlib, foreign, heap) {
                 // What happens to the ray now?
 
                 t = (+F32[(randBuffer + randIndex)>>2]);
-                randIndex = (randIndex + 4) & 0xFFFF;
+                randIndex = (randIndex + 4) & 0xFFFFF;
 
                 rayOriginX = intX;
                 rayOriginY = intY;
@@ -467,7 +467,7 @@ function AsmModule (stdlib, foreign, heap) {
                     // Diffuse reflection. Angle randomized.
 
                     t = (+F32[(randBuffer + randIndex)>>2]) * 6.283185307179586;
-                    randIndex = (randIndex + 4) & 0xFFFF;
+                    randIndex = (randIndex + 4) & 0xFFFFF;
 
                     rayDirX = sin(t);
                     rayDirY = cos(t);

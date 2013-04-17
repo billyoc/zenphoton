@@ -72,9 +72,9 @@ allocRandomBuffer = (ptr) ->
     # We can reuse random numbers to improve speed, plus this prevents us
     # from needing to call a non-asm function from our inner loops.
 
-    for n in [ptr .. ptr + 0xFFFF] by 4
+    for n in [ptr .. ptr + 0xFFFFF] by 4
         F32[n>>2] = Math.random()
-    return ptr + 0x10000
+    return ptr + 0x100000
 
 
 allocScene = (ptr, scene) ->
