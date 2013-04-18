@@ -36,23 +36,44 @@ class VSlider
         @button
             .mousedown (e) =>
                 return unless e.which == 1
-                @button.uiActive true
-                @dragging = true
-                @beginChange()
-                @updateDrag(e.pageY)
+                return if @touchDragging
+                e.preventDefault()        
+                @beginDrag e.pageY
+
+            .bind 'touchstart', (e) =>
+                touches = e.originalEvent.changedTouches
+                e.preventDefault()        
+                @touchDragging = true
+                @beginDrag touches[0].pageY
+
+            .bind 'touchmove', (e) =>
+                return unless @dragging
+                touches = e.originalEvent.changedTouches
                 e.preventDefault()
+                @updateDrag touches[0].pageY
+
+            .bind 'touchend', (e) =>
+                return unless @dragging
+                e.preventDefault()
+                @endDrag()
 
         $(window)
             .mousemove (e) =>
                 return unless @dragging
-                @updateDrag(e.pageY)
+                return if @touchDragging
                 e.preventDefault()
+                @updateDrag e.pageY
 
             .mouseup (e) =>
-                @dragging = false
-                @button.uiActive false
-                $('body').css cursor: 'auto'
-                @endChange()
+                return unless @dragging
+                return if @touchDragging
+                @endDrag()
+
+    beginDrag: (pageY) ->
+        @button.uiActive true
+        @dragging = true
+        @beginChange()
+        @updateDrag pageY
 
     updateDrag: (pageY) ->
         h = @button.innerHeight()
@@ -62,6 +83,13 @@ class VSlider
         $('body').css cursor: 'pointer'
         @setValue(value)
         @valueChanged(value)
+
+    endDrag: ->
+        @dragging = false
+        @touchDragging = false
+        @button.uiActive false
+        $('body').css cursor: 'auto'
+        @endChange()
 
     setValue: (@value) ->
         y = (@track.innerHeight() - @button.innerHeight()) * (1 - @value)
@@ -78,21 +106,42 @@ class HSlider
         @button
             .mousedown (e) =>
                 return unless e.which == 1
-                @dragging = true
-                @beginChange()
-                @updateDrag(e.pageX)
+                return if @touchDragging
                 e.preventDefault()
+                @beginDrag e.pageX
+
+            .bind 'touchstart', (e) =>
+                touches = e.originalEvent.changedTouches
+                e.preventDefault()
+                @touchDragging = true
+                @beginDrag touches[0].pageX
+
+            .bind 'touchmove', (e) =>
+                return unless @dragging
+                touches = e.originalEvent.changedTouches
+                e.preventDefault()
+                @updateDrag touches[0].pageX
+
+            .bind 'touchend', (e) =>
+                return unless @dragging
+                e.preventDefault()
+                @endDrag()
 
         $(window)
             .mousemove (e) =>
                 return unless @dragging
+                return if @touchDragging
                 @updateDrag(e.pageX)
                 e.preventDefault()
 
             .mouseup (e) =>
-                @dragging = false
-                $('body').css cursor: 'auto'
-                @endChange()
+                return if @touchDragging
+                @endDrag()
+
+    beginDrag: (pageX) ->
+        @dragging = true
+        @beginChange()
+        @updateDrag pageX
 
     updateDrag: (pageX) ->
         w = @button.innerWidth()
@@ -101,6 +150,12 @@ class HSlider
         $('body').css cursor: 'pointer'
         @setValue(value)
         @valueChanged(value)
+
+    endDrag: ->
+        @dragging = false
+        @touchDragging = false
+        $('body').css cursor: 'auto'
+        @endChange()
 
     setValue: (@value) ->
         w = @button.innerWidth()
@@ -115,26 +170,50 @@ class Button
         @button
             .mousedown (e) =>
                 return unless e.which == 1
-                @button.uiActive true
-                @dragging = true
-                $('body').css cursor: 'pointer'
                 e.preventDefault()
+                @beginDrag()
 
             .click (e) =>
-                @dragging = false
-                @button.uiActive false
-                $('body').css cursor: 'auto'
-                @onClick(e)
+                @endDrag()
+                @onClick e
+
+            .bind 'touchstart', (e) =>
+                # Touches time out; long-touch is not interpreted as a click.
+                e.preventDefault()
+                @timer = window.setTimeout (() => @endDrag()), 500
+                @beginDrag()
+
+            .bind 'touchmove', (e) =>
+                return unless @dragging
+                e.preventDefault()
+
+            .bind 'touchend', (e) =>
+                return unless @dragging
+                e.preventDefault()
+                @endDrag()
+                @onClick e
 
         $(window)
             .mouseup (e) =>
-                @dragging = false
-                @button.uiActive false
-                $('body').css cursor: 'auto'
+                return unless @dragging
+                @endDrag()
 
     click: (handler) ->
         @onClick = handler
         return this
+
+    beginDrag: ->
+        @button.uiActive true
+        @dragging = true
+        $('body').css cursor: 'pointer'
+
+    endDrag: ->
+        @button.uiActive false
+        @dragging = false
+        $('body').css cursor: 'auto'
+        if @timer
+            window.clearTimeout @timer
+            @timer = null
 
     hotkey: (key) ->
         # We only use 'keydown' here... for keys that are also used by the browser UI,
