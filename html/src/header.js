@@ -27,3 +27,5 @@
     OTHER DEALINGS IN THE SOFTWARE.
 
 */
+
+"use strict";
