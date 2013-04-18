@@ -44,14 +44,7 @@ function AsmModule (stdlib, foreign, heap) {
     var imul = stdlib.Math.imul;
 
     function lineLoop(i, e, b, y, g, u, v) {
-        /*
-         * Unrolled inner loop for line drawing algorithm.
-         *
-         * Most of the raytracer is inlined below, to avoid the costs
-         * in accessing member variables or making function calls. Here,
-         * we're tightly iterating using only a few variables, and a small
-         * function runs much faster.
-         */
+        // Unrolled inner loop for line drawing algorithm.
 
         i = i|0;    // Major-axis starting point
         e = e|0;    // Major-axis end point
