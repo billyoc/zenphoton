@@ -312,7 +312,7 @@ class Renderer
             push8(Math.max(0, Math.min(255, (v * 255)|0)))
 
         push16 = (v) ->
-            push8((v|0) >> 8)
+            push8(((v|0) >> 8) & 0xFF)
             push8((v|0) & 0xFF)
 
         push8(formatVersion)
@@ -332,6 +332,10 @@ class Renderer
             push8F(s.reflective)
             push8F(s.transmissive)
 
+        console.log bytes
+        for i in [0 .. bytes.length - 1]
+            console.log [bytes[i], bytes[i].length, bytes[i].charCodeAt 0]
+
         return bytes.join('')
 
     setStateBlob: (s) ->
@@ -339,25 +343,37 @@ class Renderer
         @setStateBlobV0(s) if formatVersion == 0
         @clear()
 
-    setStateBlobV0: (s) ->
-        @width = (s.charCodeAt(1) << 8) | s.charCodeAt(2)
-        @height = (s.charCodeAt(3) << 8) | s.charCodeAt(4)
-        @lightX = (s.charCodeAt(5) << 8) | s.charCodeAt(6)
-        @lightY = (s.charCodeAt(7) << 8) | s.charCodeAt(8)
-        @exposure = s.charCodeAt(9) / 255.0
+    decode16: (s, n) ->
+        # Decode a 16-bit signed big endian number from string 's' starting at location 'n'
+        v = (s.charCodeAt(n) << 8) | s.charCodeAt(n + 1)
+        if v & 0x8000
+            v -= 0x10000
+        return v
 
-        @segments = []
-        numSegments = (s.charCodeAt(10) << 8) | s.charCodeAt(11)
+    decode8F: (s, n) ->
+        # Decode an 8-bit value as a float in the range [0, 1]
+        return s.charCodeAt(n) / 255.0
+
+    setStateBlobV0: (s) ->
+        @width = @decode16 s, 1
+        @height = @decode16 s, 3
+        @lightX = @decode16 s, 5
+        @lightY = @decode16 s, 7
+        @exposure = @decode8F s, 9
+        numSegments = @decode16 s, 10
 
         o = 12
-        while numSegments--
-            x0 = (s.charCodeAt(0+o) << 8) | s.charCodeAt(1+o)
-            y0 = (s.charCodeAt(2+o) << 8) | s.charCodeAt(3+o)
-            x1 = (s.charCodeAt(4+o) << 8) | s.charCodeAt(5+o)
-            y1 = (s.charCodeAt(6+o) << 8) | s.charCodeAt(7+o)
-            diffuse = s.charCodeAt(8+o) / 255.0
-            reflective = s.charCodeAt(9+o) / 255.0
-            transmissive = s.charCodeAt(10+o) / 255.0
+        @segments = []
+        while numSegments > 0
+            numSegments--
+
+            x0 = @decode16 s, o+0
+            y0 = @decode16 s, o+2
+            x1 = @decode16 s, o+4
+            y1 = @decode16 s, o+6
+            diffuse = @decode8F s, o+8
+            reflective = @decode8F s, o+9
+            transmissive = @decode8F s, o+10
 
             o += 11
             @segments.push(new Segment(
