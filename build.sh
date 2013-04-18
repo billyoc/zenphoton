@@ -11,14 +11,22 @@ else
     DEBUG_CODE=
 fi
 
-# Worker thread
+# Worker thread (plain JS version)
 (
     cat html/src/header.js
     (
-        cat html/src/rayworker-asm.js
-        coffee -c -p html/src/rayworker.coffee
+        coffee -c -p html/src/worker-noasm.coffee
     ) | $MINIFY
 ) > html/rayworker.js
+
+# Worker thread (asm.js version)
+(
+    cat html/src/header.js
+    (
+        cat html/src/worker-asm-core.js
+        coffee -c -p html/src/worker-asm-shell.coffee
+    ) | $MINIFY
+) > html/rayworker-asm.js
 
 # Main file
 (
@@ -27,6 +35,7 @@ fi
         cat \
             html/src/jquery-1.9.1.min.js \
             html/src/jquery.hotkeys.js \
+            html/src/asmjs-feature-test.js \
             $DEBUG_CODE
         (
             cat \

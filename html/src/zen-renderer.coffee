@@ -38,7 +38,6 @@ class Renderer
     # Frontend for running raytracing work on several worker threads, and plotting
     # the results on a Canvas. Uses worker threads for everything.
 
-    kWorkerURI = 'rayworker.js'
     kNumBatchWorkers = 2
     kInteractiveRays = 1000
     kMinBatchRays = 5000
@@ -54,6 +53,7 @@ class Renderer
         # We create one 'interactive' worker (where we do accumulation and merges).
         # All other workers are 'batch' workers, which perform bulk background rendering.
 
+        @chooseWorker()
         @interactive = @newWorker()
         @batch = (@newWorker() for i in [1 .. kNumBatchWorkers] by 1)
 
@@ -95,8 +95,22 @@ class Renderer
                 return
         return
 
+    chooseWorker: ->
+        # Choose a variant of our worker implementation.
+        #
+        # We have one in plain JavaScript, which is still faster on most browsers.
+        # The newer asm.js version is faster on Chrome, plus we use it if asm.js is
+        # supported.
+
+        isChrome = navigator.userAgent.indexOf("Chrome") > 0
+
+        if TestAsmJs() or isChrome
+            @workerURI = 'rayworker-asm.js'
+        else
+            @workerURI = 'rayworker.js'
+
     newWorker: ->
-        w = new Worker(kWorkerURI)
+        w = new Worker(@workerURI)
         w._numPending = 0
         w._cookie = 0
         w.addEventListener 'message', (event) =>
