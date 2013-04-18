@@ -101,10 +101,17 @@ class Renderer
         # We have one in plain JavaScript, which is still faster on most browsers.
         # The newer asm.js version is faster on Chrome, plus we use it if asm.js is
         # supported.
+        #
+        # XXX: We also use the asm version on MobileSafari, to work around a crash
+        #      which seems to be triggered by some of the ArrayBuffer memory
+        #      management patterns in the old renderer.
 
         isChrome = navigator.userAgent.indexOf("Chrome") > 0
+        isMobile = navigator.userAgent.indexOf("Mobile") > 0
+        isAppleWebKit = navigator.userAgent.indexOf("AppleWebKit") > 0
+        isMobileSafari = isMobile and isAppleWebKit
 
-        if TestAsmJs() or isChrome
+        if isChrome or isMobileSafari or TestAsmJs()
             @workerURI = 'rayworker-asm.js'
         else
             @workerURI = 'rayworker.js'
