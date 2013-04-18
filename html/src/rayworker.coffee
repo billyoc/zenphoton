@@ -33,26 +33,45 @@
 
 
 #####################################################################
-# asm.js setup
+# Entry point
 
-if not Math.imul
-    # This is close enough for our purposes. If we need it, real polyfill is at:
-    # https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Math/imul
-    Math.imul = (a, b) -> a * b
 
-heap = new ArrayBuffer(8 * 1024 * 1024)
-F32 = new Float32Array(heap)
-U32 = new Uint32Array(heap)
+@onmessage = (event) =>
+    @init()
+    msg = event.data
+    switch msg.job
+        when 'trace' then @job_trace msg
+        when 'firstTrace' then @job_firstTrace msg
+        when 'accumulate' then @job_accumulate msg
+        when 'render' then @job_render msg
 
-zeroes = new ArrayBuffer(64 * 1024)
-Z32 = new Uint32Array(zeroes)
 
-stdlib =
-    Math: Math
-    Uint32Array: Uint32Array
-    Float32Array: Float32Array
+@init = () ->
+    # First-time setup
 
-AsmFn = AsmModule(stdlib, {}, heap)
+    if not Math.imul
+        # This is close enough for our purposes. If we need it, real polyfill is at:
+        # https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Math/imul
+        Math.imul = (a, b) -> a * b
+
+    # Allocate heap
+    @heap = new ArrayBuffer 0x800000
+    @F32 = new Float32Array @heap
+    @U32 = new Uint32Array @heap
+
+    @zeroes = new ArrayBuffer 0x10000
+    @Z32 = new Uint32Array @zeroes
+
+    stdlib =
+        Math: Math
+        Uint32Array: Uint32Array
+        Float32Array: Float32Array
+
+    # Link the asm.js module
+    @AsmFn = AsmModule stdlib, {}, @heap
+
+    # One-time initialization done.
+    @init = () -> null
 
 
 #####################################################################
@@ -63,7 +82,7 @@ alloc32 = (ptr, width, height) ->
     return ptr + (4 * width * height)
 
 
-allocScene = (ptr, scene) ->
+@allocScene = (ptr, scene) ->
     # Transcribe our scene from an array of Segment objects into a flat list of floats in our heap
 
     for s in scene
@@ -80,33 +99,33 @@ allocScene = (ptr, scene) ->
         r2 = d1 + s.reflective
         t3 = r2 + s.transmissive
 
-        F32[(ptr + 0 ) >> 2] = s.x0
-        F32[(ptr + 4 ) >> 2] = s.y0
-        F32[(ptr + 8 ) >> 2] = dx
-        F32[(ptr + 12) >> 2] = dy
-        F32[(ptr + 16) >> 2] = d1
-        F32[(ptr + 20) >> 2] = r2
-        F32[(ptr + 24) >> 2] = t3
-        F32[(ptr + 28) >> 2] = xn
-        F32[(ptr + 32) >> 2] = yn
+        @F32[(ptr + 0 ) >> 2] = s.x0
+        @F32[(ptr + 4 ) >> 2] = s.y0
+        @F32[(ptr + 8 ) >> 2] = dx
+        @F32[(ptr + 12) >> 2] = dy
+        @F32[(ptr + 16) >> 2] = d1
+        @F32[(ptr + 20) >> 2] = r2
+        @F32[(ptr + 24) >> 2] = t3
+        @F32[(ptr + 28) >> 2] = xn
+        @F32[(ptr + 32) >> 2] = yn
 
         ptr += 64
     return ptr
 
-traceWithHeap = (ptr, msg) ->
+@traceWithHeap = (ptr, msg) ->
     # Middleman for AsmFn.trace(), helps set up the heap first
 
     # Heap layout
     counts = ptr
     sceneBegin = alloc32(counts, msg.width, msg.height)
-    sceneEnd = allocScene(sceneBegin, msg.segments)
+    sceneEnd = @allocScene(sceneBegin, msg.segments)
 
     # Use JavaScript's PRNG to seed our fast inlined PRNG
     seed = (Math.random() * 0xFFFFFFFF)|0
 
-    AsmFn.trace(counts, msg.width, msg.height, msg.lightX, msg.lightY, msg.numRays, sceneBegin, sceneEnd, seed)
+    @AsmFn.trace(counts, msg.width, msg.height, msg.lightX, msg.lightY, msg.numRays, sceneBegin, sceneEnd, seed)
 
-memzero = (begin, end) ->
+@memzero = (begin, end) ->
     # Quickly zero an area of the heap, by splatting data from a zero buffer.
     # Must be 32-bit aligned.
 
@@ -115,11 +134,11 @@ memzero = (begin, end) ->
         if l <= 0
             return
 
-        if l >= zeroes.byteLength
-            U32.set(Z32, begin >> 2)
-            begin += zeroes.byteLength
+        if l >= 0x10000
+            @U32.set(@Z32, begin >> 2)
+            begin += 0x10000
         else
-            U32.set(Z32.slice(0, l >> 2), begin >> 2)
+            @U32.set(@Z32.slice(0, l >> 2), begin >> 2)
             begin += l
 
 
@@ -134,9 +153,9 @@ memzero = (begin, end) ->
     counts = 0
     endCounts = alloc32(counts, msg.width, msg.height)
 
-    memzero(counts, endCounts)
-    traceWithHeap(counts, msg)
-    result = heap.slice(counts, endCounts)
+    @memzero(counts, endCounts)
+    @traceWithHeap(counts, msg)
+    result = @heap.slice(counts, endCounts)
 
     @postMessage({
         job: msg.job,
@@ -159,7 +178,7 @@ memzero = (begin, end) ->
     if msg.cookie > @cookie
         # Newer cookie; start over
 
-        U32.set(counts, accumulator>>2)
+        @U32.set(counts, accumulator>>2)
         @raysTraced = msg.numRays
         @cookie = msg.cookie
 
@@ -168,14 +187,14 @@ memzero = (begin, end) ->
         # Use our saturation-robust accumulator loop only if enough rays
         # have been cast such that saturation is a concern.
 
-        U32.set(counts, src>>2)
+        @U32.set(counts, src>>2)
         n = @width * @height
         @raysTraced += msg.numRays
 
         if @raysTraced >= 0xffffff
-            AsmFn.accumLoopSat(src, accumulator, n)
+            @AsmFn.accumLoopSat(src, accumulator, n)
         else
-            AsmFn.accumLoop(src, accumulator, n)
+            @AsmFn.accumLoop(src, accumulator, n)
 
 
 @job_render = (msg) ->
@@ -191,8 +210,8 @@ memzero = (begin, end) ->
     br = Math.exp(1 + 10 * msg.exposure) / @raysTraced
 
     n = msg.width * msg.height
-    AsmFn.renderLoop(accumulator, pixels, n, br)
-    result = heap.slice(pixels, end)
+    @AsmFn.renderLoop(accumulator, pixels, n, br)
+    result = @heap.slice(pixels, end)
 
     @postMessage({
         job: msg.job,
@@ -216,15 +235,10 @@ memzero = (begin, end) ->
     end = alloc32(accumulator, msg.width, msg.height)
 
     # Zero the accumulator
-    memzero(accumulator, end)
+    @memzero(accumulator, end)
 
-    traceWithHeap(accumulator, msg)
+    @traceWithHeap(accumulator, msg)
     @raysTraced = msg.numRays
     @cookie = msg.cookie
 
     @job_render(msg)
-
-
-@onmessage = (event) =>
-    msg = event.data
-    this['job_' + msg.job](msg)
