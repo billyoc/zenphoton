@@ -77,52 +77,60 @@ class GardenUI
 
         $('#histogramImage')
             .mousedown (e) =>
-                $('#help').fadeOut(2000)
-                @undo.checkpoint()
+                e.preventDefault()
+                return if @handlingTouch
 
                 if e.shiftKey
                     # Moving light! This is a semi-hidden feature until I design a multi-tool
                     # UI that seems appropriately Zen. But anyway, how Zen is it to try and move
                     # the sun anyway? In the mean-time, shift-drag will do it.
 
+                    @undo.checkpoint()
                     @movingLight = true
                     @renderer.moveLight @mouseXY e
                     @renderer.clear()
 
                 else
                     # Starting to draw a line
+                    @lineToolBegin e
 
-                    [x, y] = @mouseXY e
-                    @renderer.segments.push(new Segment(x, y, x, y,
-                        @material[0].value, @material[1].value, @material[2].value))
-                    @drawingSegment = true
-                    @renderer.showSegments++
-                    @renderer.redraw()
-
+            .bind 'touchstart', (e) =>
                 e.preventDefault()
+                @handlingTouch = true
+                @lineToolBegin e.originalEvent.changedTouches[0]
+
+            .bind 'touchmove', (e) =>
+                return unless @handlingTouch
+                if @drawingSegment
+                    e.preventDefault()
+                    @lineToolMove e.originalEvent.changedTouches[0]
+
+            .bind 'touchend', (e) =>
+                return unless @handlingTouch
+                @handlingTouch = false
+                if @drawingSegment
+                    e.preventDefault()
+                    @lineToolEnd e.originalEvent.changedTouches[0]
 
         $(window)
             .mouseup (e) =>
+                return if @handlingTouch
+
                 if @drawingSegment
-                    @renderer.trimSegments()
-                    @renderer.showSegments--
-                    @renderer.redraw()
-                    @updateLink()
-                    @drawingSegment = false
                     e.preventDefault()
-   
+                    @lineToolEnd e
+
                 if @movingLight
+                    e.preventDefault()
                     @updateLink()
                     @movingLight = false
-                    e.preventDefault()
 
             .mousemove (e) =>
+                return if @handlingTouch
+
                 if @drawingSegment
-                    s = @renderer.segments[@renderer.segments.length - 1]
-                    [s.x1, s.y1] = @mouseXY e
-                    @renderer.clear()   # Asynchronously start rendering the new scene
-                    @renderer.redraw()  # Immediately draw the updated segments
                     e.preventDefault()
+                    @lineToolMove e
 
                 if @movingLight
                     @renderer.moveLight @mouseXY e
@@ -196,6 +204,34 @@ class GardenUI
     mouseXY: (e) ->
         o = $(@renderer.canvas).offset()
         return [e.pageX - o.left, e.pageY - o.top]
+
+    lineToolBegin: (e) ->
+        $('#help').fadeOut(2000)
+        @undo.checkpoint()
+
+        [x, y] = @mouseXY e
+        @renderer.segments.push(new Segment(x, y, x, y,
+            @material[0].value, @material[1].value, @material[2].value))
+
+        @drawingSegment = true
+        @renderer.showSegments++
+        @renderer.redraw()
+
+    lineToolMove: (e) ->
+        # Update a line segment previously started with beginLine
+
+        s = @renderer.segments[@renderer.segments.length - 1]
+        [s.x1, s.y1] = @mouseXY e
+
+        @renderer.clear()   # Asynchronously start rendering the new scene
+        @renderer.redraw()  # Immediately draw the updated segments
+
+    lineToolEnd: (e) ->
+        @renderer.trimSegments()
+        @renderer.showSegments--
+        @renderer.redraw()
+        @updateLink()
+        @drawingSegment = false
 
     initMaterialSlider: (sel, defaultValue) ->
         widget = new HSlider $(sel)
