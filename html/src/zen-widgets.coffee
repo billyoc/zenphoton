@@ -42,7 +42,7 @@ class VSlider
                 @updateDrag(e.pageY)
                 e.preventDefault()
 
-        $('body')
+        $(window)
             .mousemove (e) =>
                 return unless @dragging
                 @updateDrag(e.pageY)
@@ -83,7 +83,7 @@ class HSlider
                 @updateDrag(e.pageX)
                 e.preventDefault()
 
-        $('body')
+        $(window)
             .mousemove (e) =>
                 return unless @dragging
                 @updateDrag(e.pageX)
@@ -126,7 +126,7 @@ class Button
                 $('body').css cursor: 'auto'
                 @onClick(e)
 
-        $('body')
+        $(window)
             .mouseup (e) =>
                 @dragging = false
                 @button.uiActive false

@@ -101,7 +101,7 @@ class GardenUI
 
                 e.preventDefault()
 
-        $('body')
+        $(window)
             .mouseup (e) =>
                 if @drawingSegment
                     @renderer.trimSegments()
@@ -111,7 +111,7 @@ class GardenUI
                     @drawingSegment = false
                     e.preventDefault()
    
-                else if @movingLight
+                if @movingLight
                     @updateLink()
                     @movingLight = false
                     e.preventDefault()
@@ -124,7 +124,7 @@ class GardenUI
                     @renderer.redraw()  # Immediately draw the updated segments
                     e.preventDefault()
 
-                else if @movingLight
+                if @movingLight
                     @renderer.moveLight @mouseXY e
                     @renderer.clear()
                     e.preventDefault()
