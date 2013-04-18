@@ -63,7 +63,7 @@ function AsmModule (stdlib, foreign, heap) {
             if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
-            j = i + imul(v, j)|0;
+            j = (i + imul(v, j))|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~t;
@@ -73,7 +73,7 @@ function AsmModule (stdlib, foreign, heap) {
             if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
-            j = i + imul(v, j)|0;
+            j = (i + imul(v, j))|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~t;
@@ -83,7 +83,7 @@ function AsmModule (stdlib, foreign, heap) {
             if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
-            j = i + imul(v, j)|0;
+            j = (i + imul(v, j))|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~t;
@@ -93,7 +93,7 @@ function AsmModule (stdlib, foreign, heap) {
             if (((i - e)|0) >= 0) return;
             j = ~~y;
             t = b * (y - +(j|0));
-            j = i + imul(v, j)|0;
+            j = (i + imul(v, j))|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~(b - t);
             j = (j + v)|0;
             U32[j>>2] = (U32[j>>2]|0) + ~~t;
