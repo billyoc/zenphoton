@@ -332,10 +332,6 @@ class Renderer
             push8F(s.reflective)
             push8F(s.transmissive)
 
-        console.log bytes
-        for i in [0 .. bytes.length - 1]
-            console.log [bytes[i], bytes[i].length, bytes[i].charCodeAt 0]
-
         return bytes.join('')
 
     setStateBlob: (s) ->
