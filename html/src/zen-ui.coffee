@@ -78,42 +78,56 @@ class GardenUI
         $('#histogramImage')
             .mousedown (e) =>
                 $('#help').fadeOut(2000)
-
                 @undo.checkpoint()
-                [x, y] = @mouseXY(e)
 
-                @renderer.trimSegments()
-                @renderer.segments.push(new Segment(x, y, x, y,
-                    @material[0].value, @material[1].value, @material[2].value))
+                if e.shiftKey
+                    # Moving light! This is a semi-hidden feature until I design a multi-tool
+                    # UI that seems appropriately Zen. But anyway, how Zen is it to try and move
+                    # the sun anyway? In the mean-time, shift-drag will do it.
 
-                @drawingSegment = true
-                @renderer.showSegments++
-                @renderer.redraw()
+                    @movingLight = true
+                    @renderer.moveLight @mouseXY e
+                    @renderer.clear()
+
+                else
+                    # Starting to draw a line
+
+                    [x, y] = @mouseXY e
+                    @renderer.segments.push(new Segment(x, y, x, y,
+                        @material[0].value, @material[1].value, @material[2].value))
+                    @drawingSegment = true
+                    @renderer.showSegments++
+                    @renderer.redraw()
 
                 e.preventDefault()
 
         $('body')
             .mouseup (e) =>
-                return unless @drawingSegment
-                @drawingSegment = false
-                @renderer.showSegments--
-                @renderer.redraw()
-                @updateLink()
+                if @drawingSegment
+                    @renderer.trimSegments()
+                    @renderer.showSegments--
+                    @renderer.redraw()
+                    @updateLink()
+                    @drawingSegment = false
+                    e.preventDefault()
+   
+                else if @movingLight
+                    @updateLink()
+                    @movingLight = false
+                    e.preventDefault()
 
             .mousemove (e) =>
-                return unless @drawingSegment
-                [x, y] = @mouseXY(e)
-                s = @renderer.segments[@renderer.segments.length - 1]
-                s.x1 = x
-                s.y1 = y
+                if @drawingSegment
+                    s = @renderer.segments[@renderer.segments.length - 1]
+                    [s.x1, s.y1] = @mouseXY e
+                    @renderer.clear()   # Asynchronously start rendering the new scene
+                    @renderer.redraw()  # Immediately draw the updated segments
+                    e.preventDefault()
 
-                # Asynchronously start rendering the new scene
-                @renderer.clear()
-
-                # Immediately draw the updated segments
-                @renderer.redraw()
-
-                e.preventDefault()
+                else if @movingLight
+                    @renderer.moveLight @mouseXY e
+                    @renderer.clear()
+                    e.preventDefault()
 
         @material = [
             @initMaterialSlider('#diffuseSlider', 1.0),
@@ -132,9 +146,10 @@ class GardenUI
 
         $('#clearButton').button()
             .click (e) =>
-                return if !@renderer.segments.length
+                return if !@renderer.segments.length and @renderer.isDefaultLightSource()
                 @undo.checkpoint()
                 @renderer.segments = []
+                @renderer.setDefaultLightSource()
                 @renderer.clear()
                 @updateLink()
 
@@ -176,7 +191,7 @@ class GardenUI
             $('#help').hide()
 
     updateLink: ->
-        document.location.hash = btoa(@renderer.getStateBlob())
+        document.location.hash = btoa @renderer.getStateBlob()
 
     mouseXY: (e) ->
         o = $(@renderer.canvas).offset()

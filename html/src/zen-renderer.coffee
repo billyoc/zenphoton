@@ -172,11 +172,21 @@ class Renderer
         # Create an ImageData that we'll use to transfer pixels back to the canvas
         @pixelImage = @ctx.getImageData(0, 0, @width, @height)
 
-        # Light source
+        @setDefaultLightSource()
+        @setDefaultWalls()
+
+    setDefaultLightSource: ->
         @lightX = @width / 2
         @lightY = @height / 2
 
-        # Scene walls
+    isDefaultLightSource: ->
+        return @lightX == @width / 2 and @lightY == @height / 2
+
+    moveLight: (xy) ->
+        @lightX = Math.min( @width - 2, Math.max( 1, xy[0] ))
+        @lightY = Math.min( @height - 2, Math.max( 1, xy[1] ))
+
+    setDefaultWalls: ->
         @walls = [
             new Segment(0, 0, @width-1, 0, 0,0,0),
             new Segment(0, 0, 0, @height-1, 0,0,0),
