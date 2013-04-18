@@ -38,11 +38,22 @@ class Renderer
     # Frontend for running raytracing work on several worker threads, and plotting
     # the results on a Canvas. Uses worker threads for everything.
 
+    # How many threads to use? Performance will suffer if this is higher than the
+    # actual number of CPU cores available, and we'll be underutilizing the CPU if it's lower.
+    # Aside from tuning this based on runtime profiling, there's not much we can do. Currently
+    # hardcoding to 2 as a conservative default.
+
     kNumBatchWorkers = 2
-    kInteractiveRays = 1000
-    kMinBatchRays = 5000
-    kMaxBatchRays = 200000
-    kBatchSizeFactor = 0.1
+
+    # Performance constants for scaling batch sizes. Batch sizes are specified as an expected
+    # rendering duration or expected frame rate. This is scaled by the actual peak rendering
+    # speed to yield number of rays per batch.
+
+    kInteractiveTargetFPS = 60      # Rough target in FPS for interactive raytracing
+    kMinBatchRays = 100             # Below this, the ratio of work to overhead is terrible.
+    kMinBatchSeconds = 0.1          # Smallest batch workload, in estimated seconds
+    kMaxBatchSeconds = 4.0          # Longest batch workload, in estimated seconds
+    kBatchSizeFactor = 0.1          # Scale factor for total rays traced -> batch size
 
     callback: () ->
 
@@ -59,6 +70,10 @@ class Renderer
 
         # Cookies for keeping track of in-flight changes while rendering
         @latestCookie = 1
+
+        # Realistic but conservative speed estimate;
+        # this determines how fast the batch size will initially ramp up.
+        @speedEstimate = 5000
 
         @segments = []
         @exposure = 0.5
@@ -133,6 +148,9 @@ class Renderer
 
                 @raysTraced = msg.raysTraced
                 @pixelImage.data.set new Uint8ClampedArray msg.pixels
+                @updateSpeedEstimate()
+
+                # Redraw the canvas and update our UI.
                 @redraw()
                 @callback()
 
@@ -215,7 +233,9 @@ class Renderer
         # Start longer-running batch rendering jobs on worker threads that are idle.
 
         # Scale batches of work so they get longer after the image has settled
-        numRays = 0 | Math.min(kMaxBatchRays, Math.max(kMinBatchRays, @raysTraced * kBatchSizeFactor))
+        numRays = 0 | Math.min(kMaxBatchSeconds * @speedEstimate,
+                      Math.max(kMinBatchRays,
+                      Math.max(kMinBatchSeconds * @speedEstimate, @raysTraced * kBatchSizeFactor)))
 
         for w in @batch
             continue if w._numPending
@@ -242,10 +262,13 @@ class Renderer
         # Begin the first trace on a new scene. This should be performed when
         # the interactive worker's cookie is out of date.
 
+        # Scale our batch size to hit a target interactive frame rate
+        numRays = 0 | Math.max(kMinBatchRays, @speedEstimate / kInteractiveTargetFPS)
+ 
         @interactive._numPending++
         @interactive.postMessage @sceneMessage
             job: 'firstTrace'
-            numRays: kInteractiveRays
+            numRays: numRays
 
     asyncRender: ->
         # Request an asynchronous rendering update, either immediately or once
@@ -289,6 +312,16 @@ class Renderer
 
     raysPerSecond: ->
         return @raysTraced / @elapsedSeconds()
+
+    updateSpeedEstimate: ->
+        t = @elapsedSeconds()
+
+        # Too soon to get a reliable measurement?
+        return if t < 1.0
+
+        # Low pass filter
+        speed = @raysTraced / t
+        @speedEstimate += (speed - @speedEstimate) * 0.1
 
     getState: ->
         return [
