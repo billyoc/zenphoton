@@ -59,7 +59,7 @@ class Renderer
 
     constructor: (canvasId) ->
         @canvas = document.getElementById(canvasId)
-        @canvas.addEventListener('resize', (e) => @resize())
+        window.addEventListener('resize', (e) => @resize())
 
         # We create one 'interactive' worker (where we do accumulation and merges).
         # All other workers are 'batch' workers, which perform bulk background rendering.
@@ -147,7 +147,9 @@ class Renderer
                 # An image is done rendering. Store it, and notify the UI.
 
                 @raysTraced = msg.raysTraced
-                @pixelImage.data.set new Uint8ClampedArray msg.pixels
+                if msg.width == @width and msg.height == @height
+                    @pixelImage.data.set new Uint8ClampedArray msg.pixels
+
                 @updateSpeedEstimate()
 
                 # Redraw the canvas and update our UI.
@@ -188,17 +190,18 @@ class Renderer
 
     resize: ->
         # Set up our canvas
-        @width = @canvas.clientWidth
-        @height = @canvas.clientHeight
+        @width = @canvas.width = window.innerWidth - 184
+        @height = @canvas.height = window.innerHeight - 60
         @canvas.width = @width
         @canvas.height = @height
         @ctx = @canvas.getContext('2d')
 
         # Create an ImageData that we'll use to transfer pixels back to the canvas
-        @pixelImage = @ctx.getImageData(0, 0, @width, @height)
+        @pixelImage = @ctx.getImageData 0, 0, @width, @height
 
         @setDefaultLightSource()
         @setDefaultWalls()
+        @clear()
 
     setDefaultLightSource: ->
         @lightX = @width / 2
@@ -391,8 +394,8 @@ class Renderer
         return s.charCodeAt(n) / 255.0
 
     setStateBlobV0: (s) ->
-        @width = @decode16 s, 1
-        @height = @decode16 s, 3
+        #@width = @decode16 s, 1
+        #@height = @decode16 s, 3
         @lightX = @decode16 s, 5
         @lightY = @decode16 s, 7
         @exposure = @decode8F s, 9

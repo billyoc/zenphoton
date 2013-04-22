@@ -60,7 +60,6 @@
     @U32 = new Uint32Array @heap
 
     @zeroes = new ArrayBuffer 0x10000
-    @Z32 = new Uint32Array @zeroes
 
     stdlib =
         Math: Math
@@ -135,10 +134,10 @@ alloc32 = (ptr, width, height) ->
             return
 
         if l >= 0x10000
-            @U32.set(@Z32, begin >> 2)
+            @U32.set(@zeroes, begin >> 2)
             begin += 0x10000
         else
-            @U32.set(@Z32.slice(0, l >> 2), begin >> 2)
+            @U32.set(@zeroes.slice(0, l), begin >> 2)
             begin += l
 
 
@@ -217,6 +216,8 @@ alloc32 = (ptr, width, height) ->
         job: msg.job,
         cookie: @cookie,
         raysTraced: @raysTraced,
+        width: msg.width,
+        height: msg.height,
         pixels: result,
     }, [result])
 

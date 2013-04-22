@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-title" content="Zen photon">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="viewport" content="width=1210, height=907, minimum-scale=0.2, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no" />
     <link rel="apple-touch-icon" href="logo-57.png" />
     <link rel="apple-touch-icon" sizes="72x72" href="logo-72.png" />
     <link rel="apple-touch-icon" sizes="114x114" href="logo-114.png" />
@@ -23,55 +23,58 @@
             src: local('Roboto Regular'), local('Roboto-Regular'), url(roboto.ttf) format('truetype');
         }
 
-        body {
+        html, body {
             background: #111;
             color: rgba(255, 255, 240, 0.4);
             font-size: 16px;
             font-family: 'Roboto', sans-serif;
+            height: 100%;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
         }
 
         h1 {
             color: rgba(255, 255, 240, 1.0);
             font-size: 20px;
-            padding: 0 0 0.25em 0;
-            margin: 0;
+            padding: 4px 0;
+            margin: 0 92px 0 92px;
+            height: 30px;
         }
 
         #centerColumn {
-            width: 1024px;
-            margin: 0 auto;
+            margin: 0 92px 0 92px;
+        }
+
+        #centerWrap {
+            float: left;
+            width: 100%;
         }
 
         #workspace {
-            width: 1024px;
-            height: 576px;
             border: 1px solid #444;
             background: black;
             position: relative;
         }
 
         #workspace canvas {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
+            display: block;
         }
 
         #leftColumn {
-            position: absolute;
-            left: -92px;
-            top: -1px;
+            float: left;
             width: 88px;
+            margin-left: -100%;
             display: none;
+            padding: 2px;
         }
 
         #rightColumn {
-            position: absolute;
-            left: 1028px;
-            top: -1px;
-            width: 86px;
+            float: left;
+            width: 88px;
+            margin-left: -88px;
             display: none;
+            padding: 2px;
         }
 
         #leftColumn .sep {
@@ -119,11 +122,6 @@
             padding: 4px;
             cursor: pointer;
             white-space: nowrap;
-            -moz-user-select: none;
-            -khtml-user-select: none;
-            -webkit-user-select: none;
-            user-select: none;
-
         }
 
         .ui-active {
@@ -155,16 +153,17 @@
             text-align: center;
         }
 
-        .hbox {
-            padding: 0.25em 0;
+        .footer {
+            height: 26px;
+            padding: 4px 0;
         }
 
-        .hbox .label {
+        .footer .label {
             padding: 0 0.5em 0 0;
             color: rgba(255, 255, 240, 0.2);
         }
 
-        .hbox .sep {
+        .footer .sep {
             padding: 0 0.5em;
             color: rgba(255, 200, 200, 0.2);
         }
@@ -189,14 +188,15 @@
     </style>
 </head>
 <body>
-    <div id='centerColumn'>
 
-        <h1>zen photon garden</h1>
+    <h1>zen photon garden</h1>
+
+    <div id='centerWrap'><div id='centerColumn'>
 
         <div id='workspace'>
             <canvas id='histogramImage'></canvas>
 
-            <div id='notsupported'>
+             <div id='notsupported'>
                 <h1>Oh no.</h1>
                 <p>Zen photon garden is an interactive raytracer art-toy for HTML5 browsers.</p>
                 <p>But it looks like your browser isn't supported!</p>
@@ -207,30 +207,9 @@
             <div id='help'>
                 Draw on me.
             </div>
-
-            <div id='leftColumn'>
-                <div class='ui-box ui-inactive' id='pngButton'>Save PNG…</div>
-                <div class='ui-box ui-inactive' id='linkButton'>Share link…</div>
-                <div class='sep'>•</div>
-                <div class='show-segments-on-hover'>
-                    <div class='ui-box ui-inactive' id='undoButton'><span class='glyph'>↩</span>Undo</div>
-                    <div class='ui-box ui-inactive' id='redoButton'><span class='glyph'>↪</span>Redo</div>
-                    <div class='ui-box ui-inactive' id='clearButton'><span class='glyph'>×</span>Clear</div>
-                </div>
-                <div class='sep'>•</div>
-                <div class='ui-box' id='diffuseSlider'><div class='ui-hslider'></div>Diffuse</div>
-                <div class='ui-box' id='reflectiveSlider'><div class='ui-hslider'></div>Reflective</div>
-                <div class='ui-box' id='transmissiveSlider'><div class='ui-hslider'></div>Transmissive</div>
-            </div>
-
-            <div id='rightColumn'>
-                <div class='ui-box ui-inactive' id='exposureSlider'><span class='glyph'>↕</span>Exposure</div>
-            </div>
-
         </div>
 
-        <div class='hbox'>
-
+        <div class='footer'>
             <div id='colophon'>
                 <a target="_blank" href="http://scanlime.org/contact/">contact</a>
                 / <a target="_blank" href="https://github.com/scanlime/zenphoton">github</a>
@@ -241,6 +220,26 @@
             <span class='label'>Speed:</span><span id='raySpeed'>0</span> rays/sec
         </div>
 
+    </div></div>
+
+    <div id='leftColumn'>
+        <div class='ui-box ui-inactive' id='pngButton'>Save PNG…</div>
+        <div class='ui-box ui-inactive' id='linkButton'>Share link…</div>
+        <div class='sep'>•</div>
+        <div class='show-segments-on-hover'>
+            <div class='ui-box ui-inactive' id='undoButton'><span class='glyph'>↩</span>Undo</div>
+            <div class='ui-box ui-inactive' id='redoButton'><span class='glyph'>↪</span>Redo</div>
+            <div class='ui-box ui-inactive' id='clearButton'><span class='glyph'>×</span>Clear</div>
+        </div>
+        <div class='sep'>•</div>
+        <div class='ui-box' id='diffuseSlider'><div class='ui-hslider'></div>Diffuse</div>
+        <div class='ui-box' id='reflectiveSlider'><div class='ui-hslider'></div>Reflective</div>
+        <div class='ui-box' id='transmissiveSlider'><div class='ui-hslider'></div>Transmissive</div>
     </div>
+
+    <div id='rightColumn'>
+        <div class='ui-box ui-inactive' id='exposureSlider'><span class='glyph'>↕</span>Exposure</div>
+    </div>
+
 </body>
 </html>

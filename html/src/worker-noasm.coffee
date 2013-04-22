@@ -423,6 +423,8 @@ else
         'job': msg.job,
         'cookie': @cookie,
         'raysTraced': @raysTraced,
+        'width': msg.width,
+        'height': msg.height,
         'pixels': pix.buffer,
     }, [pix.buffer])
 
